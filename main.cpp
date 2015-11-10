@@ -41,12 +41,17 @@ bool vnormals;
 GLUI *glui, *glui2;
 GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
-GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, *attribute_panel, *geometry_panel;
-GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation_text;
+GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, *attribute_panel, *geometry_panel, *detail_panel;
+GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation_text, 
+	*cur_name_text, *cur_type_text, *cur_id_text, *cur_depth_text, *cur_parent_text;
 GLUI_TextBox *tree_display;
 GLUI_List *gui_node_list;
 vector<Node*> tree_list;
 Node* current_node;
+string cur_name_textx = "";
+string cur_type_textx = "";  
+string cur_parent_textx = "";
+int cur_id_textx, cur_depth_textx;
 
 
 int   wireframe = 0;
@@ -106,6 +111,7 @@ void load_model(int mode)
 
 }
 
+
 void toggle_transform(int mode)
 {
 	if(mode == 0)
@@ -130,6 +136,13 @@ void toggle_attributes(int mode)
 		attribute_panel->enable();
 }
 
+void toggle_trinity(int mode)
+{
+	toggle_transform(mode);
+	toggle_attributes(mode);
+	toggle_model_text(mode);
+}
+
 void process_transform(int mode)
 {
 
@@ -139,40 +152,39 @@ void textbox_cb(GLUI_Control *control) {
     printf("Got textbox callback\n");
 }
 
+void update_current()
+{
+	cout << "updating" << endl;
+	cur_name_textx = current_node->n_name;
+	
+	cur_type_textx = node_type_string[current_node->type]; 
+	cur_id_textx = current_node->n_id;
+	cout << "new id " << cur_id_textx << endl;
+	cur_depth_textx = current_node->n_depth;
+	cur_parent_textx = current_node->parent->n_name;
+	toggle_trinity(0);
+	if(current_node->type == TRANSFORMATION)
+		toggle_transform(1);
+	else if(current_node->type == ATTRIBUTE)
+		toggle_attributes(1);
+	else if(current_node->type == GEOMETRY)
+		toggle_model_text(1);
+}
+
 void select_cb(int control) {
     if(control == 1)
     {
     	int item = gui_node_list->get_current_item();
     	Node* elem = tree_list[item];
     	current_node = elem;
-    	cout << "current name: " << current_node->n_name << endl;	
+    	cout << "current: " << current_node->n_name << endl;
+    	update_current();
 
     }
 }
 
-/*string build_tree_string(vector<tree_elem>* listx)
-{
-	int pd = 0;
-	int counter = 0;
-	string temp = "";
-	vector<tree_elem> list = *listx;
-	for(int i = 0; i < list.size(); i++)
-	{
-		struct tree_elem elem = list[i];		
-		if(elem.t_depth != pd)
-			counter = 0;
-		counter++;		
-		for(int j = 0; j < elem.t_depth; j++)
-			temp = temp + "   ";
-		temp = temp + to_string(counter) + ". ";
-		temp = temp + elem.t_name;
-		if(elem.t_isDefault)
-			temp = temp + " (" + to_string(elem.t_id) + ")"; 
-		temp = temp + "\n";
-		pd = elem.t_depth;
-	}
-	return temp;
-}*/
+
+
 int main(int argc, char* argv[])
 {
 	//cout << "hello" << endl;
@@ -220,7 +232,7 @@ int main(int argc, char* argv[])
 	GLUI_Master.set_glutKeyboardFunc(Keyboard);
 	GLUI_Master.set_glutMouseFunc(MouseButton);
 	glutMotionFunc(MouseMotion);
-	glutIdleFunc(idle);
+	GLUI_Master.set_glutIdleFunc(idle);
 	initGL();
 
   /****************************************/
@@ -233,7 +245,7 @@ int main(int argc, char* argv[])
 					    GLUI_SUBWINDOW_RIGHT );
 
 
-
+  
 
   /* Panel for adding node */
   create_panel = new GLUI_Panel(glui, "Create node");
@@ -249,7 +261,14 @@ int main(int argc, char* argv[])
 
 
   /* Panel for editing node */
-  	edit_panel = new GLUI_Panel(glui, "Edit current");
+  	edit_panel = new GLUI_Panel(glui, "Current node");
+  		detail_panel = new GLUI_Panel(glui, "Node details");
+			cur_name_text = new GLUI_EditText(detail_panel, "Name: ", cur_name_textx);
+			cur_type_text = new GLUI_EditText(detail_panel, "Type: ", cur_type_textx);
+			cur_id_text = new GLUI_EditText(detail_panel, "ID: ", &cur_id_textx);
+			cur_depth_text = new GLUI_EditText(detail_panel, "Depth: ", &cur_depth_textx);
+			cur_parent_text = new GLUI_EditText(detail_panel, "Parent: ", cur_parent_textx);
+			detail_panel->disable();
 		geometry_panel = new GLUI_Panel(edit_panel, "Model");
 			geometry_panel->disable();
 			model_name = new GLUI_EditText(geometry_panel, "Path: ", "", 0, load_model);
@@ -632,6 +651,7 @@ bool loadFromFile(char* fileName)
 void idle()
 {
 	ready = true;
+	glui->sync_live();
 	//glutPostRedisplay();
 	//if(newCommand)
 		//parseInput(command, true);
