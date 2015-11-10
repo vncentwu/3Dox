@@ -43,9 +43,10 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
 GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, *attribute_panel, *geometry_panel;
 GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation_text;
-
-
-
+GLUI_TextBox *tree_display;
+GLUI_List *gui_node_list;
+vector<Node*> tree_list;
+Node* current_node;
 
 
 int   wireframe = 0;
@@ -105,19 +106,86 @@ void load_model(int mode)
 
 }
 
+void toggle_transform(int mode)
+{
+	if(mode == 0)
+		transform_panel->disable();
+	else
+		transform_panel->enable();
+}
+
+void toggle_model_text(int mode)
+{
+	if(mode == 0)
+		geometry_panel->disable();
+	else
+		geometry_panel->enable();
+}
+
+void toggle_attributes(int mode)
+{
+	if(mode == 0)
+		attribute_panel->disable();
+	else
+		attribute_panel->enable();
+}
+
 void process_transform(int mode)
 {
 
 }
 
+void textbox_cb(GLUI_Control *control) {
+    printf("Got textbox callback\n");
+}
+
+void select_cb(int control) {
+    if(control == 1)
+    {
+    	int item = gui_node_list->get_current_item();
+    	Node* elem = tree_list[item];
+    	current_node = elem;
+    	cout << "current name: " << current_node->n_name << endl;	
+
+    }
+}
+
+/*string build_tree_string(vector<tree_elem>* listx)
+{
+	int pd = 0;
+	int counter = 0;
+	string temp = "";
+	vector<tree_elem> list = *listx;
+	for(int i = 0; i < list.size(); i++)
+	{
+		struct tree_elem elem = list[i];		
+		if(elem.t_depth != pd)
+			counter = 0;
+		counter++;		
+		for(int j = 0; j < elem.t_depth; j++)
+			temp = temp + "   ";
+		temp = temp + to_string(counter) + ". ";
+		temp = temp + elem.t_name;
+		if(elem.t_isDefault)
+			temp = temp + " (" + to_string(elem.t_id) + ")"; 
+		temp = temp + "\n";
+		pd = elem.t_depth;
+	}
+	return temp;
+}*/
 int main(int argc, char* argv[])
 {
 	//cout << "hello" << endl;
 	root = new Node(OBJECT);
+	current_node = root;
 	Node* node2 = new Node(GEOMETRY);
 	Node* node3 = new Node(TRANSFORMATION, "snoopy");
+	Node* node4 = new Node(ATTRIBUTE, "garfield");
+	Node* node5 = new Node(CAMERA);	
 	root->addChild(node2);
 	root->addChild(node3);
+	node3->addChild(node4);
+	node4->addChild(node5);
 	cout << "number of children: " << root->child_count() << endl;
 	cout << "node2 : " << node2->n_name << endl;
 
@@ -163,22 +231,8 @@ int main(int argc, char* argv[])
   /*** Create the side subwindow ***/
   glui = GLUI_Master.create_glui_subwindow( main_window, 
 					    GLUI_SUBWINDOW_RIGHT );
-  /* Panel */
-  obj_panel = new GLUI_Panel(glui, "Node selection");
 
-  /* Dropdown for node selection */
-  GLUI_Listbox *list = new GLUI_Listbox( obj_panel, "Node:", &curr_string );
-  vector<Node*> node_list;
-  root->getAll(&node_list);
-  for(int i = 0; i<node_list.size(); i++)
-  {
-	char str[21]; 
-	if(node_list[i]->isDefaultName)
-		sprintf(str, "(%s%d)", node_list[i]->n_name, node_list[i]->n_id);
-	else
-		sprintf(str, "%s", node_list[i]->n_name);
-	list->add_item(i, str);
-  }
+
 
 
   /* Panel for adding node */
@@ -197,14 +251,54 @@ int main(int argc, char* argv[])
   /* Panel for editing node */
   	edit_panel = new GLUI_Panel(glui, "Edit current");
 		geometry_panel = new GLUI_Panel(edit_panel, "Model");
+			geometry_panel->disable();
 			model_name = new GLUI_EditText(geometry_panel, "Path: ", "", 0, load_model);
 		transform_panel = new GLUI_Panel(edit_panel, "Transformations");
 			x_text = new GLUI_EditText(transform_panel, "X: ", "", 0, process_transform);
 			y_text = new GLUI_EditText(transform_panel, "Y: ", "", 0, process_transform);
 			z_text = new GLUI_EditText(transform_panel, "Z: ", "", 0, process_transform);
 			rotation_text = new GLUI_EditText(transform_panel, "Degree: ", "", 0, process_transform);								
+			x_text->disable();
+			y_text->disable();
+			z_text->disable();
+			rotation_text->disable();
 		attribute_panel = new GLUI_Panel(edit_panel, "Attributes");
+			attribute_panel->disable();
+			GLUI_Listbox *attribute_list = new GLUI_Listbox( attribute_panel, "Mode:", &curr_string );
+			for(int k = 0; k<6; k++)
+			{
+				attribute_list->add_item(k, attributes[k]);
+			}  
 
+	/* Node selection Panel */
+  	obj_panel = new GLUI_Panel(glui, "Node selection");
+	root->getTreeText(&tree_list, 0);
+	gui_node_list = new GLUI_List(obj_panel, true, 1, select_cb);
+	gui_node_list->set_h(300);
+	gui_node_list->set_w(150);
+	int pd = 0;
+	int counter = 0;
+	for(int i = 0; i < tree_list.size(); i++)
+	{
+		string temp = "";
+		Node* elem = tree_list[i];		
+		if(elem->n_depth != pd)
+			counter = 0;
+		counter++;		
+		for(int j = 0; j < elem->n_depth; j++)
+			temp = temp + "   ";
+		temp = temp + to_string(counter) + ". ";
+		temp = temp + elem->n_name;
+		if(elem->isDefaultName)
+			temp = temp + " (ID: " + to_string(elem->n_id) + ")"; 
+		gui_node_list->add_item(i, temp.c_str());
+		pd = elem->n_depth;
+	}
+	cout << "tree: " << tree_list.size() << endl;
+	for(int n = 0; n < tree_list.size(); n++)
+	{
+		cout << "tree: " << tree_list[n]->n_name << endl;
+	}
 
 
 	pthread_t t1;
