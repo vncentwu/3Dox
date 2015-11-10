@@ -41,7 +41,8 @@ bool vnormals;
 GLUI *glui, *glui2;
 GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
-GLUI_Panel      *obj_panel;
+GLUI_Panel      *obj_panel, *create_panel;
+GLUI_EditText	*edit_node_name;
 
 
 
@@ -94,12 +95,17 @@ void control_cb(int control)
 	return;
 }
 
+void add_node(int mode)
+{
+
+}
+
 int main(int argc, char* argv[])
 {
 	//cout << "hello" << endl;
 	root = new Node(OBJECT);
-	Node* node2 = new Node(OBJECT);
-	Node* node3 = new Node(OBJECT, "snoopy");
+	Node* node2 = new Node(GEOMETRY);
+	Node* node3 = new Node(TRANSFORMATION, "snoopy");
 	root->addChild(node2);
 	root->addChild(node3);
 	cout << "number of children: " << root->child_count() << endl;
@@ -153,16 +159,28 @@ int main(int argc, char* argv[])
   /* Dropdown */
   GLUI_Listbox *list = new GLUI_Listbox( obj_panel, "Node:", &curr_string );
   
+  /* Initialize dropdown list*/
   vector<Node*> node_list;
   root->getAll(&node_list);
-  cout << " LIST SIZE: " << node_list.size() << endl;
   for(int i = 0; i<node_list.size(); i++)
   {
-  	//cout << "name" << node_list[i]->n_id << endl;
-	char str[21]; // enough to hold all numbers up to 64-bits
-	sprintf(str, "%s (%d)", node_list[i]->n_name, node_list[i]->n_id);
+	char str[21]; 
+	if(node_list[i]->isDefaultName)
+		sprintf(str, "(%s%d)", node_list[i]->n_name, node_list[i]->n_id);
+	else
+		sprintf(str, "%s", node_list[i]->n_name);
 	list->add_item(i, str);
   }
+
+
+  /* Panel for adding node */
+  create_panel = new GLUI_Panel(glui, "Create node");
+
+  /* Add node button */
+  new GLUI_Button( create_panel, "Add node", 0, add_node);
+
+
+
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
