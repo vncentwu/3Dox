@@ -41,8 +41,8 @@ bool vnormals;
 GLUI *glui, *glui2;
 GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
-GLUI_Panel      *obj_panel, *create_panel;
-GLUI_EditText	*edit_node_name;
+GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, *attribute_panel, *geometry_panel;
+GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation_text;
 
 
 
@@ -96,6 +96,16 @@ void control_cb(int control)
 }
 
 void add_node(int mode)
+{
+
+}
+
+void load_model(int mode)
+{
+
+}
+
+void process_transform(int mode)
 {
 
 }
@@ -156,10 +166,8 @@ int main(int argc, char* argv[])
   /* Panel */
   obj_panel = new GLUI_Panel(glui, "Node selection");
 
-  /* Dropdown */
+  /* Dropdown for node selection */
   GLUI_Listbox *list = new GLUI_Listbox( obj_panel, "Node:", &curr_string );
-  
-  /* Initialize dropdown list*/
   vector<Node*> node_list;
   root->getAll(&node_list);
   for(int i = 0; i<node_list.size(); i++)
@@ -175,9 +183,27 @@ int main(int argc, char* argv[])
 
   /* Panel for adding node */
   create_panel = new GLUI_Panel(glui, "Create node");
+	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", "", 0, add_node);
+	  /* Dropdown for adding node */
+	  GLUI_Listbox *create_list = new GLUI_Listbox( create_panel, "Type:", &curr_string );
+	  for(int j = 0; j<7; j++)
+	  {
+		create_list->add_item(j, node_type_string[j]);
+	  }  
+	  new GLUI_Button( create_panel, "Add as child", 0, add_node);
+	  new GLUI_Button( create_panel, "Add as parent", 0, add_node);
 
-  /* Add node button */
-  new GLUI_Button( create_panel, "Add node", 0, add_node);
+
+  /* Panel for editing node */
+  	edit_panel = new GLUI_Panel(glui, "Edit current");
+		geometry_panel = new GLUI_Panel(edit_panel, "Model");
+			model_name = new GLUI_EditText(geometry_panel, "Path: ", "", 0, load_model);
+		transform_panel = new GLUI_Panel(edit_panel, "Transformations");
+			x_text = new GLUI_EditText(transform_panel, "X: ", "", 0, process_transform);
+			y_text = new GLUI_EditText(transform_panel, "Y: ", "", 0, process_transform);
+			z_text = new GLUI_EditText(transform_panel, "Z: ", "", 0, process_transform);
+			rotation_text = new GLUI_EditText(transform_panel, "Degree: ", "", 0, process_transform);								
+		attribute_panel = new GLUI_Panel(edit_panel, "Attributes");
 
 
 
