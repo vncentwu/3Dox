@@ -8,15 +8,15 @@
 //#include <glut.h> //windows
 //#include <math.h>
 #include <stdio.h>
-#include <string>
-//#include <pthread.h>
+//#include <string>
+#include <pthread.h>
 #include <iostream>
 //#include <thread>
 //#include <future>
 #include "loader.h"
 #include "main.h"
 #include <fstream>
-#include <pthread.h>
+//#include <pthread.h>
 #include <unistd.h>
 //#include "src/include/GL/glui.h"
 //#include "glui-2.36/src/lib/libglui.a"
@@ -75,7 +75,7 @@ Node* root;
 
 void* wait_in(void*)
 {
-	while(1)
+	/*while(1)
 	{
 		if(!newCommand)
 		{
@@ -86,7 +86,7 @@ void* wait_in(void*)
 			strcpy(command, s);
 			newCommand = true;
 		}
-	}
+	}*/
 }
 
 void control_cb(int control)
@@ -96,13 +96,14 @@ void control_cb(int control)
 
 int main(int argc, char* argv[])
 {
+	//cout << "hello" << endl;
 	root = new Node(OBJECT);
 	Node* node2 = new Node(OBJECT);
-	Node* node3 = new Node(OBJECT);
+	Node* node3 = new Node(OBJECT, "snoopy");
 	root->addChild(node2);
 	root->addChild(node3);
 	cout << "number of children: " << root->child_count() << endl;
-
+	cout << "node2 : " << node2->n_name << endl;
 
 	lighting_off = false;
 	local_coords = true;
@@ -151,24 +152,17 @@ int main(int argc, char* argv[])
 
   /* Dropdown */
   GLUI_Listbox *list = new GLUI_Listbox( obj_panel, "Node:", &curr_string );
+  
   vector<Node*> node_list;
   root->getAll(&node_list);
   cout << " LIST SIZE: " << node_list.size() << endl;
   for(int i = 0; i<node_list.size(); i++)
   {
-	char str[21];
-	//Node
-	string name = node_list[i]->name;
-	cout << "plssss" << node_list[i]-> id << endl;
-	//sprintf(str, "%s (%d)", "", node_list[i]->id);
+  	//cout << "name" << node_list[i]->n_id << endl;
+	char str[21]; // enough to hold all numbers up to 64-bits
+	sprintf(str, "%s (%d)", node_list[i]->n_name, node_list[i]->n_id);
 	list->add_item(i, str);
   }
-
-  //int i;
-  //for( i=0; i<4; i++ )
-    ///list->add_item( i, string_list[i] );
-
-
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
@@ -501,8 +495,8 @@ void idle()
 {
 	ready = true;
 	//glutPostRedisplay();
-	if(newCommand)
-		parseInput(command, true);
+	//if(newCommand)
+		//parseInput(command, true);
 }
 
 void printFiles()
