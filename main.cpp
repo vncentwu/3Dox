@@ -8,7 +8,7 @@
 //#include <glut.h> //windows
 //#include <math.h>
 #include <stdio.h>
-//#include <string>
+#include <string>
 //#include <pthread.h>
 #include <iostream>
 //#include <thread>
@@ -18,9 +18,14 @@
 #include <fstream>
 #include <pthread.h>
 #include <unistd.h>
-//#include "GL/glui.h"
-#include "src/lib/libglui.a"
+//#include "src/include/GL/glui.h"
+//#include "glui-2.36/src/lib/libglui.a"
 //#include <cstring>
+//#include "GL/glui.h"
+//#include "libglui.a"
+ // #include <GL/glui.h>
+#include "src/include/GL/glui.h"
+
 
 using namespace std;
 #define LINE_SIZE    1024
@@ -33,6 +38,40 @@ int mode;
 bool local_coords;
 bool fnormals;
 bool vnormals;
+GLUI *glui, *glui2;
+GLUI_Spinner    *light0_spinner, *light1_spinner;
+GLUI_RadioGroup *radio;
+GLUI_Panel      *obj_panel;
+
+
+
+
+
+int   wireframe = 0;
+int   obj_type = 1;
+int   segments = 8;
+int   segments2 = 8;
+int   light0_enabled = 1;
+int   light1_enabled = 1;
+float light0_intensity = 1.0;
+float light1_intensity = .4;
+int   main_window;
+float scale = 1.0;
+int   show_sphere=1;
+int   show_torus=1;
+int   show_axes = 1;
+int   show_text = 1;
+float sphere_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+float torus_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+float view_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+float obj_pos[] = { 0.0, 0.0, 0.0 };
+char *string_list[] = { "Hello World!", "Foo", "Testing...", "Bounding box: on" };
+int   curr_string = 0;
+
+Node* root;
+
+
+
 
 void* wait_in(void*)
 {
@@ -50,8 +89,21 @@ void* wait_in(void*)
 	}
 }
 
+void control_cb(int control)
+{
+	return;
+}
+
 int main(int argc, char* argv[])
 {
+	root = new Node(OBJECT);
+	Node* node2 = new Node(OBJECT);
+	Node* node3 = new Node(OBJECT);
+	root->addChild(node2);
+	root->addChild(node3);
+	cout << "number of children: " << root->child_count() << endl;
+
+
 	lighting_off = false;
 	local_coords = true;
 	loader = new TrimeshLoader();  
@@ -69,39 +121,57 @@ int main(int argc, char* argv[])
 	{
 		Trimesh* mesh = new Trimesh();
 		loader->loadOBJ(argv[1], mesh);
-		//cout << "df" << strlen(argv[1]) << endl;
 		meshes.push_back(mesh);
 	}
-	/*else
-	{
-		Trimesh* mesh = new Trimesh();
-		//cout << "df" << strlen("cactus.obj") << endl;
-		loader->loadOBJ("cactus.obj", mesh);
-		meshes.push_back(mesh);
-	}*/
-	
-
 
 	glutInit(&argc, argv); //init glut library
-
 	glutInitWindowSize(1000.f, 1000.f);
 	glutInitWindowPosition(0,0);
-	//glColorMaterial( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-	glutCreateWindow("Object loader");
+
+	main_window = glutCreateWindow("Object loader");
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
-	glutReshapeFunc(myReshape);
 	glutDisplayFunc(myDisplay);
-	glutMouseFunc(MouseButton);
-	glutKeyboardFunc(Keyboard);
+	GLUI_Master.set_glutReshapeFunc(myReshape);
+	GLUI_Master.set_glutKeyboardFunc(Keyboard);
+	GLUI_Master.set_glutMouseFunc(MouseButton);
 	glutMotionFunc(MouseMotion);
 	glutIdleFunc(idle);
 	initGL();
 
+  /****************************************/
+  /*         Here's the GLUI code         */
+  /****************************************/
+	printf( "GLUI version: %3.2f\n", GLUI_Master.get_version() );
+
+  /*** Create the side subwindow ***/
+  glui = GLUI_Master.create_glui_subwindow( main_window, 
+					    GLUI_SUBWINDOW_RIGHT );
+  /* Panel */
+  obj_panel = new GLUI_Panel(glui, "Node selection");
+
+  /* Dropdown */
+  GLUI_Listbox *list = new GLUI_Listbox( obj_panel, "Node:", &curr_string );
+  vector<Node*> node_list;
+  root->getAll(&node_list);
+  cout << " LIST SIZE: " << node_list.size() << endl;
+  for(int i = 0; i<node_list.size(); i++)
+  {
+	char str[21];
+	//Node
+	string name = node_list[i]->name;
+	cout << "plssss" << node_list[i]-> id << endl;
+	//sprintf(str, "%s (%d)", "", node_list[i]->id);
+	list->add_item(i, str);
+  }
+
+  //int i;
+  //for( i=0; i<4; i++ )
+    ///list->add_item( i, string_list[i] );
+
+
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
-
-	//cout << "?" << endl;
 
 }
 

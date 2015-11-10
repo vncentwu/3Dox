@@ -13,6 +13,7 @@
 //#include <thread>
 //#include <future>
 #include "loader.h"
+#include "node.h"
 
 using namespace std;
 
