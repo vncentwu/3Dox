@@ -153,74 +153,6 @@ void dummy_func(int mode)
 
 }
 
-void add_node(int mode)
-{		
-	const char* nam = edit_node_name->get_text();
-	int line = gui_node_list->get_current_item();
-	int type = curr_type_string;
-	Node *parent = current_node->parent;
-	if(strlen(nam) == 0)
-		nam = node_type_string[type];
-	Node *node = new Node(type, nam);
-	bool no_children;
-
-	if(mode == 0) //as child
-	{
-		current_node->addChild(node);
-	}
-	else if(mode == 1)
-	{
-		if(current_node->n_depth > 0) //root is immutable
-		{
-			parent->addChild(node);
-			parent->removeChild(current_node);
-			node->addChild(current_node);
-			current_node->increment_depth();
-			current_node = node;
-		}
-		else
-			cout << "Cannot delete root" << endl;
-	}
-	else if(mode == 2)
-	{
-		if(current_node->n_depth > 0) //root is immutable
-		{
-			parent->removeChild(current_node);	
-			if(current_node->children.size()>0)
-			{
-				current_node = current_node->children[0];
-				parent->addChild(current_node);
-				current_node->decrement_depth_children();
-			}
-			else
-			{
-				no_children = true;
-				current_node = parent;
-			}							
-		}
-		else
-			cout << "Cannot delete root" << endl;
-	}
-	update_tree_list();
-	gui_node_list->update_and_draw_text();
-	if(mode == 0)
-		gui_node_list->curr_line = line + current_node->num_descendants();
-	else if(no_children)
-		gui_node_list->curr_line = line - current_node->num_descendants() - 1;
-	else if(mode == 1 | mode == 2)
-		gui_node_list->curr_line = line;
-	if(mode != 2)
-		current_node = node;
-
-	cout << gui_node_list->curr_line << endl;
-	glui->sync_live();
-}
-
-void load_model(int mode)
-{
-
-}
-
 
 void toggle_transform(int mode)
 {
@@ -253,15 +185,6 @@ void toggle_trinity(int mode)
 	toggle_model_text(mode);
 }
 
-void process_transform(int mode)
-{
-
-}
-
-void textbox_cb(GLUI_Control *control) {
-    printf("Got textbox callback\n");
-}
-
 void update_current()
 {
 	cout << "updating" << endl;
@@ -290,6 +213,81 @@ void update_current()
 		toggle_model_text(1);
 }
 
+void add_node(int mode)
+{		
+	if(current_node->n_depth == 0)
+	{
+		cout << "Cannot delete root" << endl;
+		return;
+	}
+	const char* nam = edit_node_name->get_text();
+	int line = gui_node_list->get_current_item();
+	int type = curr_type_string;
+	Node *parent = current_node->parent;
+	if(strlen(nam) == 0)
+		nam = node_type_string[type];
+	Node *node = new Node(type, nam);
+	bool no_children;
+
+	if(mode == 0) //as child
+	{
+		current_node->addChild(node);
+	}
+	else if(mode == 1)
+	{
+		parent->addChild(node);
+		parent->removeChild(current_node);
+		node->addChild(current_node);
+		current_node->increment_depth();
+		current_node = node;
+	}
+	else if(mode == 2)
+	{
+		parent->removeChild(current_node);	
+		if(current_node->children.size()>0)
+		{
+			current_node = current_node->children[0];
+			parent->addChild(current_node);
+			current_node->decrement_depth_children();
+		}
+		else
+		{
+			no_children = true;
+			current_node = parent;
+		}							
+	}
+	update_tree_list();
+	gui_node_list->update_and_draw_text();
+	if(mode == 0)
+		gui_node_list->curr_line = line + current_node->num_descendants();
+	else if(no_children)
+		gui_node_list->curr_line = line - current_node->num_descendants() - 1;
+	else if(mode == 1 | mode == 2)
+		gui_node_list->curr_line = line;
+	if(mode != 2)
+		current_node = node;
+	cout << gui_node_list->curr_line << endl;
+	update_current();
+}
+
+void load_model(int mode)
+{
+
+}
+
+
+
+void process_transform(int mode)
+{
+
+}
+
+void textbox_cb(GLUI_Control *control) {
+    printf("Got textbox callback\n");
+}
+
+
+
 void select_cb(int control) {
     if(control == 1)
     {
@@ -303,24 +301,25 @@ void select_cb(int control) {
     }
 }
 
+void initialize_dummy_nodes()
+{
+	Node* node2 = new Node(GEOMETRY);
+	Node* node3 = new Node(TRANSFORMATION, "snoopy");
+	Node* node4 = new Node(ATTRIBUTE, "garfield");
+	Node* node5 = new Node(CAMERA);	
+	root->addChild(node2);
+	root->addChild(node3);
+	node3->addChild(node4);
+	node4->addChild(node5);
+	//cout << "number of children: " << root->child_count() << endl;
+	//cout << "node2 : " << node2->n_name << endl;
+}
 
 
 int main(int argc, char* argv[])
 {
-	//cout << "hello" << endl;
 	root = new Node(OBJECT, "Root");
 	current_node = root;
-	//Node* node2 = new Node(GEOMETRY);
-	//Node* node3 = new Node(TRANSFORMATION, "snoopy");
-	//Node* node4 = new Node(ATTRIBUTE, "garfield");
-	//Node* node5 = new Node(CAMERA);	
-	//root->addChild(node2);
-	//root->addChild(node3);
-	//node3->addChild(node4);
-	//node4->addChild(node5);
-	//cout << "number of children: " << root->child_count() << endl;
-	//cout << "node2 : " << node2->n_name << endl;
-
 	lighting_off = false;
 	local_coords = true;
 	loader = new TrimeshLoader();  
@@ -363,10 +362,6 @@ int main(int argc, char* argv[])
   /*** Create the side subwindow ***/
   glui = GLUI_Master.create_glui_subwindow( main_window, 
 					    GLUI_SUBWINDOW_RIGHT );
-
-
-  
-
   /* Panel for adding node */
   create_panel = new GLUI_Panel(glui, "Create node");
 	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", "", 0, dummy_func);
@@ -557,7 +552,6 @@ void myDisplay()
 						mesh->drawFNormals();
 				}
 			}
-
 		}		
 	}
 
