@@ -46,6 +46,7 @@ GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation
 	*cur_name_text, *cur_type_text, *cur_id_text, *cur_depth_text, *cur_parent_text;
 GLUI_TextBox *tree_display;
 GLUI_List *gui_node_list;
+GLUI_Listbox *type_selector;
 vector<Node*> tree_list;
 Node* current_node;
 string cur_name_textx = "";
@@ -74,6 +75,9 @@ float view_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 float obj_pos[] = { 0.0, 0.0, 0.0 };
 char *string_list[] = { "Hello World!", "Foo", "Testing...", "Bounding box: on" };
 int   curr_string = 0;
+int   curr_type_string = 0;
+
+int counter;
 
 Node* root;
 
@@ -96,14 +100,120 @@ void* wait_in(void*)
 	}*/
 }
 
+void update_tree_list()
+{
+	gui_node_list->delete_all();
+	tree_list.clear();
+	root->getTreeText(&tree_list, 0);
+	int pd = 0;
+	counter = 0;
+	int counters[20];
+	int ind = 0;
+	for(int i = 0; i < tree_list.size(); i++)
+	{
+		string temp = "";
+		Node* elem = tree_list[i];		
+		if(elem->n_depth > pd)
+		{	
+			if(ind >= 20)
+			{
+				cout << "Error: tree max depth of 20" << endl;
+				return;
+			}
+				
+			counters[ind] = counter;
+			ind++;
+			counter = 0;
+		}
+		else if(elem->n_depth < pd)
+		{
+			ind--;
+			counter = counters[ind];
+		}
+			
+		counter++;		
+		for(int j = 0; j < elem->n_depth; j++)
+			temp = temp + "   ";
+		temp = temp + to_string(counter) + ". ";
+		temp = temp + elem->n_name;
+		if(elem->isDefaultName)
+			temp = temp + " (ID: " + to_string(elem->n_id) + ")"; 
+		gui_node_list->add_item(i, temp.c_str());
+		pd = elem->n_depth;
+	}
+}
+
 void control_cb(int control)
 {
 	return;
 }
 
-void add_node(int mode)
+void dummy_func(int mode)
 {
 
+}
+
+void add_node(int mode)
+{		
+	const char* nam = edit_node_name->get_text();
+	int line = gui_node_list->get_current_item();
+	int type = curr_type_string;
+	Node *parent = current_node->parent;
+	if(strlen(nam) == 0)
+		nam = node_type_string[type];
+	Node *node = new Node(type, nam);
+	bool no_children;
+
+	if(mode == 0) //as child
+	{
+		current_node->addChild(node);
+	}
+	else if(mode == 1)
+	{
+		if(current_node->n_depth > 0) //root is immutable
+		{
+			parent->addChild(node);
+			parent->removeChild(current_node);
+			node->addChild(current_node);
+			current_node->increment_depth();
+			current_node = node;
+		}
+		else
+			cout << "Cannot delete root" << endl;
+	}
+	else if(mode == 2)
+	{
+		if(current_node->n_depth > 0) //root is immutable
+		{
+			parent->removeChild(current_node);	
+			if(current_node->children.size()>0)
+			{
+				current_node = current_node->children[0];
+				parent->addChild(current_node);
+				current_node->decrement_depth_children();
+			}
+			else
+			{
+				no_children = true;
+				current_node = parent;
+			}							
+		}
+		else
+			cout << "Cannot delete root" << endl;
+	}
+	update_tree_list();
+	gui_node_list->update_and_draw_text();
+	if(mode == 0)
+		gui_node_list->curr_line = line + current_node->num_descendants();
+	else if(no_children)
+		gui_node_list->curr_line = line - current_node->num_descendants() - 1;
+	else if(mode == 1 | mode == 2)
+		gui_node_list->curr_line = line;
+	if(mode != 2)
+		current_node = node;
+
+	cout << gui_node_list->curr_line << endl;
+	glui->sync_live();
 }
 
 void load_model(int mode)
@@ -184,9 +294,10 @@ void select_cb(int control) {
     if(control == 1)
     {
     	int item = gui_node_list->get_current_item();
+    	//cout << "current item is: " << item << endl;
     	Node* elem = tree_list[item];
     	current_node = elem;
-    	cout << "current: " << current_node->n_name << endl;
+    	//cout << "current: " << current_node->n_name << endl;
     	update_current();
 
     }
@@ -197,18 +308,18 @@ void select_cb(int control) {
 int main(int argc, char* argv[])
 {
 	//cout << "hello" << endl;
-	root = new Node(OBJECT);
+	root = new Node(OBJECT, "Root");
 	current_node = root;
-	Node* node2 = new Node(GEOMETRY);
-	Node* node3 = new Node(TRANSFORMATION, "snoopy");
-	Node* node4 = new Node(ATTRIBUTE, "garfield");
-	Node* node5 = new Node(CAMERA);	
-	root->addChild(node2);
-	root->addChild(node3);
-	node3->addChild(node4);
-	node4->addChild(node5);
-	cout << "number of children: " << root->child_count() << endl;
-	cout << "node2 : " << node2->n_name << endl;
+	//Node* node2 = new Node(GEOMETRY);
+	//Node* node3 = new Node(TRANSFORMATION, "snoopy");
+	//Node* node4 = new Node(ATTRIBUTE, "garfield");
+	//Node* node5 = new Node(CAMERA);	
+	//root->addChild(node2);
+	//root->addChild(node3);
+	//node3->addChild(node4);
+	//node4->addChild(node5);
+	//cout << "number of children: " << root->child_count() << endl;
+	//cout << "node2 : " << node2->n_name << endl;
 
 	lighting_off = false;
 	local_coords = true;
@@ -258,26 +369,19 @@ int main(int argc, char* argv[])
 
   /* Panel for adding node */
   create_panel = new GLUI_Panel(glui, "Create node");
-	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", "", 0, add_node);
+	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", "", 0, dummy_func);
 	  /* Dropdown for adding node */
-	  GLUI_Listbox *create_list = new GLUI_Listbox( create_panel, "Type:", &curr_string );
+	  type_selector = new GLUI_Listbox( create_panel, "Type:", &curr_type_string );
 	  for(int j = 0; j<7; j++)
 	  {
-		create_list->add_item(j, node_type_string[j]);
+		type_selector->add_item(j, node_type_string[j]);
 	  }  
 	  new GLUI_Button( create_panel, "Add as child", 0, add_node);
-	  new GLUI_Button( create_panel, "Add as parent", 0, add_node);
+	  new GLUI_Button( create_panel, "Add as parent", 1, add_node);
 
 
   /* Panel for editing node */
   	edit_panel = new GLUI_Panel(glui, "Current node");
-  		detail_panel = new GLUI_Panel(glui, "Node details");
-			cur_name_text = new GLUI_EditText(detail_panel, "Name: ", cur_name_textx);
-			cur_type_text = new GLUI_EditText(detail_panel, "Type: ", cur_type_textx);
-			cur_id_text = new GLUI_EditText(detail_panel, "ID: ", &cur_id_textx);
-			cur_depth_text = new GLUI_EditText(detail_panel, "Depth: ", &cur_depth_textx);
-			cur_parent_text = new GLUI_EditText(detail_panel, "Parent: ", cur_parent_textx);
-			detail_panel->disable();
 		geometry_panel = new GLUI_Panel(edit_panel, "Model");
 			geometry_panel->disable();
 			model_name = new GLUI_EditText(geometry_panel, "Path: ", "", 0, load_model);
@@ -296,7 +400,15 @@ int main(int argc, char* argv[])
 			for(int k = 0; k<6; k++)
 			{
 				attribute_list->add_item(k, attributes[k]);
-			}  
+			} 
+		detail_panel = new GLUI_Panel(edit_panel, "Node details");
+			cur_name_text = new GLUI_EditText(detail_panel, "Name: ", cur_name_textx);
+			cur_type_text = new GLUI_EditText(detail_panel, "Type: ", cur_type_textx);
+			cur_id_text = new GLUI_EditText(detail_panel, "ID: ", &cur_id_textx);
+			cur_depth_text = new GLUI_EditText(detail_panel, "Depth: ", &cur_depth_textx);
+			cur_parent_text = new GLUI_EditText(detail_panel, "Parent: ", cur_parent_textx);
+			detail_panel->disable();
+		new GLUI_Button( edit_panel, "Delete node", 2, add_node); 
 
 	/* Node selection Panel */
   	obj_panel = new GLUI_Panel(glui, "Node selection");
@@ -305,7 +417,6 @@ int main(int argc, char* argv[])
 	gui_node_list->set_h(300);
 	gui_node_list->set_w(150);
 	int pd = 0;
-	int counter = 0;
 	for(int i = 0; i < tree_list.size(); i++)
 	{
 		string temp = "";
