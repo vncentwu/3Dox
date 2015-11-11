@@ -173,13 +173,11 @@ void toggle_trinity(int mode)
 
 void update_current()
 {
-	cout << "updating" << endl;
 	cur_name_textx = current_node->n_name;
-	
 	cur_type_textx = node_type_string[current_node->type]; 
 	cur_id_textx = current_node->n_id;
-	cout << "new id " << cur_id_textx << endl;
 	cur_depth_textx = current_node->n_depth;
+	model_namex = current_node->model_name;
 	if(current_node->parent)
 	{
 		string temp = "";
@@ -187,7 +185,6 @@ void update_current()
 			temp = temp + "(";
 		cur_parent_textx = current_node->parent->n_name;
 	}
-		
 	else
 		cur_parent_textx = "";
 	toggle_trinity(0);
@@ -424,21 +421,20 @@ int main(int argc, char* argv[])
 /* Draws a single model */
 void draw_model(Trimesh* mesh)
 {
-	glPopMatrix();
-	glPushMatrix();
-	camera_target = mesh->get_target();
-	glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-	glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
-	if(mesh && local_coords)
-		mesh->applyTransformations();
-	float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
-	float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
+
+	//glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
+	//glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
+	//if(mesh && local_coords)
+	//	mesh->applyTransformations();
+	//float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
+	//float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
 	//glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
 	//glRotatef(deg_y, 0, 1, 0);	
-	glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
+	//glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
 
 	if(mesh != NULL)
 	{
+		camera_target = mesh->get_target();
 		mesh->drawFaces(mode);
 		if(vnormals)
 			mesh->drawVNormals();
@@ -509,7 +505,7 @@ void myDisplay()
 		glEnable(GL_LIGHT0);
 		glEnable(GL_COLOR_MATERIAL);		
 	}
-
+	process_nodes();
 	/*float diam = 0;
 	float z_min = 0;
 	vector<float> camera_target;
@@ -576,7 +572,7 @@ void myDisplay()
 
 
 
-	for(int i = 0; i < meshes.size() - 1; i++)
+	/*for(int i = 0; i < meshes.size() - 1; i++)
 	{
 		mesh = meshes[i];
 		if(mesh->draw)
@@ -603,7 +599,7 @@ void myDisplay()
 					mesh->drawFNormals();
 			}
 		}
-	}		
+	}	*/	
 	
 	if(!lighting_off)
 		glDisable(GL_LIGHTING);

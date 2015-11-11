@@ -55,12 +55,17 @@ class TrimeshLoader
 
 		bool loadOBJ(const char * objfile, Trimesh * pmesh)
 		{
-			//cout << "loading: " << objfile << endl;
+			cout << "loading: " << objfile << endl;
 			ifstream ifs;
 			char line[LINE_SIZE];
 			char * tok;
 			ifs.open(objfile);
-
+			if(!ifs.is_open())
+			{
+				cout << "failed to open file " << endl;
+				return false;
+			}
+				
 			bool not_screwy = ifs.good();
 			while(!ifs.eof() && not_screwy)
 			{
