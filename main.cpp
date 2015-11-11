@@ -161,7 +161,16 @@ void update_current()
 	cur_id_textx = current_node->n_id;
 	cout << "new id " << cur_id_textx << endl;
 	cur_depth_textx = current_node->n_depth;
-	cur_parent_textx = current_node->parent->n_name;
+	if(current_node->parent)
+	{
+		string temp = "";
+		if(current_node->isDefaultName)
+			temp = temp + "(";
+		cur_parent_textx = current_node->parent->n_name;
+	}
+		
+	else
+		cur_parent_textx = "";
 	toggle_trinity(0);
 	if(current_node->type == TRANSFORMATION)
 		toggle_transform(1);
