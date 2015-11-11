@@ -52,6 +52,7 @@ Node* current_node;
 string cur_name_textx = "";
 string cur_type_textx = "";  
 string cur_parent_textx = "";
+string model_namex = "";
 int cur_id_textx, cur_depth_textx;
 
 
@@ -78,26 +79,11 @@ int   curr_string = 0;
 int   curr_type_string = 0;
 
 int counter;
-
 Node* root;
-
-
 
 
 void* wait_in(void*)
 {
-	/*while(1)
-	{
-		if(!newCommand)
-		{
-			cout << "Command> ";
-			char s[LINE_SIZE];
-			//getline(cin, s);
-			cin.getline(s, LINE_SIZE);
-			strcpy(command, s);
-			newCommand = true;
-		}
-	}*/
 }
 
 void update_tree_list()
@@ -215,7 +201,7 @@ void update_current()
 
 void add_node(int mode)
 {		
-	if(current_node->n_depth == 0)
+	if(mode != 0 && current_node->n_depth == 0)
 	{
 		cout << "Cannot delete root" << endl;
 		return;
@@ -272,7 +258,7 @@ void add_node(int mode)
 
 void load_model(int mode)
 {
-
+	cout << "this?" << endl;
 }
 
 
@@ -292,10 +278,8 @@ void select_cb(int control) {
     if(control == 1)
     {
     	int item = gui_node_list->get_current_item();
-    	//cout << "current item is: " << item << endl;
     	Node* elem = tree_list[item];
     	current_node = elem;
-    	//cout << "current: " << current_node->n_name << endl;
     	update_current();
 
     }
@@ -311,8 +295,6 @@ void initialize_dummy_nodes()
 	root->addChild(node3);
 	node3->addChild(node4);
 	node4->addChild(node5);
-	//cout << "number of children: " << root->child_count() << endl;
-	//cout << "node2 : " << node2->n_name << endl;
 }
 
 
@@ -379,7 +361,7 @@ int main(int argc, char* argv[])
   	edit_panel = new GLUI_Panel(glui, "Current node");
 		geometry_panel = new GLUI_Panel(edit_panel, "Model");
 			geometry_panel->disable();
-			model_name = new GLUI_EditText(geometry_panel, "Path: ", "", 0, load_model);
+			model_name = new GLUI_EditText(geometry_panel, "Path: ", model_namex);
 		transform_panel = new GLUI_Panel(edit_panel, "Transformations");
 			x_text = new GLUI_EditText(transform_panel, "X: ", "", 0, process_transform);
 			y_text = new GLUI_EditText(transform_panel, "Y: ", "", 0, process_transform);
@@ -433,16 +415,88 @@ int main(int argc, char* argv[])
 	{
 		cout << "tree: " << tree_list[n]->n_name << endl;
 	}
-
-
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
 
 }
 
+/* Draws a single model */
+void draw_model(Trimesh* mesh)
+{
+	glPopMatrix();
+	glPushMatrix();
+	camera_target = mesh->get_target();
+	glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
+	glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
+	if(mesh && local_coords)
+		mesh->applyTransformations();
+	float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
+	float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
+	//glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
+	//glRotatef(deg_y, 0, 1, 0);	
+	glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
 
-//standard set-up
+	if(mesh != NULL)
+	{
+		mesh->drawFaces(mode);
+		if(vnormals)
+			mesh->drawVNormals();
+		if(fnormals)
+			mesh->drawFNormals();
+	}	
+}
+
+
+
+/* Helper function to recursively processes all the nodes */
+void process_nodes(Node* node)
+{
+	switch(node->type)
+	{
+		case OBJECT:
+
+			break;
+
+		case GEOMETRY:
+			if(node->model)
+				draw_model(node->model);
+			break;
+
+		case TRANSFORMATION:
+
+			break;
+
+		case ATTRIBUTE:
+
+			break;
+
+		case LIGHT:
+		
+			break;
+
+		case CAMERA:
+
+			break;
+
+		case MOTION:
+
+			break;
+
+		default:
+			cout << "Incorrect node type" << endl;
+	}
+	for(int i = 0; i < node->children.size(); i++)
+	{
+		process_nodes(node->children[i]);
+	}
+}
+
+void process_nodes()
+{
+	process_nodes(root);
+}
+
 void myDisplay()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -456,7 +510,7 @@ void myDisplay()
 		glEnable(GL_COLOR_MATERIAL);		
 	}
 
-	float diam = 0;
+	/*float diam = 0;
 	float z_min = 0;
 	vector<float> camera_target;
 	Trimesh* mesh = NULL;
@@ -476,8 +530,6 @@ void myDisplay()
     {
 	    float z = 2.0f + diam * 4.0f + perm_zoom + zoom;
 	    float theta = 45.0f/2.0f;
-
-	    //tan(theta) = opposite / z; 
 	    float tang = tan(theta);
 	    float opposite = tang * z;
 	    span = opposite * 2.0f;    	
@@ -486,18 +538,11 @@ void myDisplay()
 
 	if(camera_target.size() >= 3)
 		gluLookAt(0, 0, 1.0f + diam * 4.0f + (perm_zoom + zoom) * span, camera_target[0], camera_target[1], camera_target[2], 0.0, 1.0, 0.0);
-		//gluLookAt(0, 0, -2.0f, camera_target[0], camera_target[1], camera_target[2], 0.0, 1.0, 0.0);
-		//
-	//gluLookAt(0., 0., 2.*(diam),  camera_target[0], camera_target[1], camera_target[2], 0.0, 1.0, 0.0);
 
 	glPushMatrix();
 
 	float auto_rotate_deg = auto_rotate_enabled ? glutGet(GLUT_ELAPSED_TIME)/100.0f : 0;
 	glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-
-	//if(mesh)
-		//mesh->applyWorldTransformations();
-
 	if(mesh && !local_coords)
 		mesh->applyTransformations();
 	//handle rotation about a point
@@ -520,46 +565,46 @@ void myDisplay()
 			mesh->drawVNormals();
 		if(fnormals)
 			mesh->drawFNormals();
-	}
-		
+	}*/
+	
+	/*gluLookAt(0, 0, 
+		1.0f + diam * 4.0f + (perm_zoom + zoom) * span, 
+		camera_target[0], 
+		camera_target[1], 
+		camera_target[2], 
+		0.0, 1.0, 0.0);*/
 
-	if(meshes.size()>0)
+
+
+	for(int i = 0; i < meshes.size() - 1; i++)
 	{
-		for(int i = 0; i < meshes.size() - 1; i++)
+		mesh = meshes[i];
+		if(mesh->draw)
 		{
-			mesh = meshes[i];
-			if(mesh->draw)
+			glPopMatrix();
+			glPushMatrix();
+			camera_target = mesh->get_target();
+			glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
+			glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
+			if(mesh && local_coords)
+				mesh->applyTransformations();
+			float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
+			float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
+			//glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
+			//glRotatef(deg_y, 0, 1, 0);	
+			glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
+
+			if(mesh != NULL)
 			{
-				glPopMatrix();
-				glPushMatrix();
-				camera_target = mesh->get_target();
-				glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-				glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
-				if(mesh && local_coords)
-					mesh->applyTransformations();
-				float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
-				float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
-				glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
-				glRotatef(deg_y, 0, 1, 0);	
-				glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
-
-				if(mesh != NULL)
-				{
-					mesh->drawFaces(mode);
-					if(vnormals)
-						mesh->drawVNormals();
-					if(fnormals)
-						mesh->drawFNormals();
-				}
+				mesh->drawFaces(mode);
+				if(vnormals)
+					mesh->drawVNormals();
+				if(fnormals)
+					mesh->drawFNormals();
 			}
-		}		
-	}
-
-
-
-
-
-
+		}
+	}		
+	
 	if(!lighting_off)
 		glDisable(GL_LIGHTING);
 	glutSwapBuffers();
@@ -598,8 +643,6 @@ void parseInput(char cmd[LINE_SIZE], bool isCommand)
 	    float diam = meshes.back()->get_diam();
 	    float z = 1.0f + diam * 4.0f + perm_zoom + zoom;
 	    float theta = 30.0f/2.0f;
-
-	    //tan(theta) = opposite / z; 
 	    float tang = tan(theta);
 	    float opposite = tang * z;
 	    span = -opposite;    	
@@ -613,15 +656,13 @@ void parseInput(char cmd[LINE_SIZE], bool isCommand)
 	if(!strcmp(v[0], "L") & v.size() >= 2)
 	{
 		cout << "Loading file: " << v[1]  << endl;
-		//cout << strlen(v[1]) << endl;
 		Trimesh* mesh = new Trimesh();
 
 		if(loader->loadOBJ(v[1], mesh))
 		{
 			meshes.push_back(mesh);
 			flushTransformations();
-		}
-			
+		}		
 	}
 	else if(!strcmp(v[0], "D"))
 	{
@@ -734,28 +775,18 @@ void parseInput(char cmd[LINE_SIZE], bool isCommand)
 
 bool loadFromFile(char* fileName)
 {
-	//cout << "START" << endl;
 	ifstream ifs;
 	char line[LINE_SIZE];
 	ifs.open(fileName);
 	bool not_screwy = ifs.good();
 	while(!ifs.eof() && not_screwy)
 	{
-		//cout << "START" << endl;
 		ifs.getline(line,LINE_SIZE);
-
-		//cout << strlen(line) << endl;
 		char data[LINE_SIZE];
-		//strncpy(data, line, strlen(line)-2);
 		strcpy(data, line);
 		data[strlen(line)-1] = '\0';
 		parseInput(data, false);
-
 	}
-
-	//cout << "HEERE" << endl;
-	//if(!not_screwy)
-		//cout << "File not found.\n\n";
 	ifs.close();
 	return not_screwy;
 }
@@ -766,9 +797,7 @@ void idle()
 {
 	ready = true;
 	glui->sync_live();
-	//glutPostRedisplay();
-	//if(newCommand)
-		//parseInput(command, true);
+	current_node->setAndUpdateModel(model_namex.c_str(), loader);
 }
 
 void printFiles()

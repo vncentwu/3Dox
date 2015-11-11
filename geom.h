@@ -251,23 +251,11 @@ class Trimesh
 
 		vector<float> get_target()
 		{
-			//cout << vertices.size() <<endl;
 			float t[3];
 			t[0] = (max_x + min_x)/2.0f;
 			t[1] = (max_y + min_y)/2.0f;
 			t[2] = (max_z + min_z)/2.0f;
-
-			//cout << min_x << "   " << max_x << "\n";
-
-			//cout << t[0] << endl;
-			//cout << t[1] << endl;
-			//cout << t[2] << endl;
-			//for (int i = 0; i < 3; i++) 
-				//cout << t[i] << "\n" << endl;
 			return vector<float>(t, t+3);
-
-			
-			//return vertices[0];
 		}
 
 		void drawFaces(int mode)
