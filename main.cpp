@@ -29,6 +29,8 @@
 
 using namespace std;
 #define LINE_SIZE    1024
+#define VERSIONA	 2
+#define VERSIONB	 3 
 
 
 vector<float> camera_target;
@@ -416,7 +418,7 @@ int main(int argc, char* argv[])
 	glutInitWindowSize(1000.f, 1000.f);
 	glutInitWindowPosition(0,0);
 
-	main_window = glutCreateWindow("Object loader");
+	main_window = glutCreateWindow("Scarlox scene loader (v2.3)");
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
 	glutDisplayFunc(myDisplay);
 	GLUI_Master.set_glutReshapeFunc(myReshape);
