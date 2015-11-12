@@ -31,7 +31,7 @@ using namespace std;
 #define LINE_SIZE    1024
 #define VERSIONA	 2
 #define VERSIONB	 3 
-
+#define PI 3.14159265
 
 vector<float> camera_target;
 bool ready;
@@ -376,15 +376,17 @@ void initialize_kid_nodes()
 	Node* camera = new Node(CAMERA, "Main camera");
 	Node* light_node = new Node(LIGHT, "Main light");
 	Node* camera_transform = new Node(TRANSFORMATION, "Camera transformer");
+	Node* geom_transform = new Node(TRANSFORMATION, "Model transformer");
 	Node* geom = new Node(GEOMETRY, "Model 1");
 	main_camera = camera;
 
 	root->addChild(object);
-	object->addChild(geom);
+	object->addChild(geom_transform);
+	geom_transform->addChild(geom);
 	root->addChild(camera_transform);
 	camera_transform->addChild(camera);
 	root->addChild(light_node);
-
+	geom->setAndUpdateModel("cactus.obj", loader);
 
 
 }
@@ -392,11 +394,12 @@ void initialize_kid_nodes()
 int main(int argc, char* argv[])
 {
 	root = new Node(OBJECT, "Root");
-	initialize_kid_nodes();
+	
 	current_node = root;
 	lighting_off = false;
 	local_coords = true;
 	loader = new TrimeshLoader();  
+	initialize_kid_nodes();
 	float origin[3] = {0,0,0};
 	camera_target.assign(origin, origin + 3);
 	mode = FACES;
@@ -513,6 +516,7 @@ int main(int argc, char* argv[])
 		cout << "tree: " << tree_list[n]->n_name << endl;
 	}
 	update_tree_list();
+
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
@@ -550,7 +554,7 @@ void apply_transformation(Node* node)
 	switch(node->transformation_type)
 	{
 		case ROTATE:
-			cout << "rotating by " << node->x <<  endl;
+			//cout << "rotating by " << node->x <<  endl;
 			glRotatef(node->x, 0, 1, 0);
 			glRotatef(node->y, 0, 0, 1);
 			glRotatef(node->z, 1, 0, 0);
@@ -564,15 +568,44 @@ void apply_transformation(Node* node)
 	}
 }
 
+void preprocess_camera_rotation()
+{
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 1.0f;
+	Node *parent;
+	if(main_camera)
+	 parent = main_camera->parent;
+	vector<Node*> ancestors;
+	while(parent)
+	{
+		if(parent->type == TRANSFORMATION)
+			ancestors.push_back(parent);
+		parent = parent->parent;
+	}
+	for(int i = 0; i < ancestors.size(); i++)
+	{
+		if(ancestors[i]->transformation_type == ROTATE)
+		{
+			glRotatef(ancestors[i]->x, 0, 1, 0);
+			glRotatef(ancestors[i]->y, 1, 0, 0);
+		}	
+
+	}
+
+}
+
 void draw_axes( float scale )
 {
   glDisable( GL_LIGHTING );
 
   glPushMatrix();
+  
   glScalef( scale, scale, scale );
-
+  glTranslatef(4.0f, -9.0f, 0);
+  preprocess_camera_rotation();
   glBegin( GL_LINES );
- 
+  
   glColor3f( 1.0, 0.0, 0.0 );
   glVertex3f( .8f, 0.05f, 0.0 );  glVertex3f( 1.0, 0.25f, 0.0 ); /* Letter X*/
   glVertex3f( 0.8f, .25f, 0.0 );  glVertex3f( 1.0, 0.05f, 0.0 );
@@ -642,11 +675,13 @@ void process_nodes(Node* node, int attr)
 	}
 }
 
+
+
 void preprocess_camera()
 {
 	float x = 0.0f;
 	float y = 0.0f;
-	float z = 0.0f;
+	float z = 3.0f;
 	Node *parent;
 	if(main_camera)
 	 parent = main_camera->parent;
@@ -657,19 +692,40 @@ void preprocess_camera()
 			ancestors.push_back(parent);
 		parent = parent->parent;
 	}
-
+	
 	for(int i = 0; i < ancestors.size(); i++)
 	{
 		if(ancestors[i]->transformation_type == TRANSLATE)
 		{
-			x += ancestors[i]->x;
-			y += ancestors[i]->y;
-			z += ancestors[i]->z;
+			glTranslatef(-ancestors[i]->x, -ancestors[i]->y, -ancestors[i]->z);
 		}
+		else if(ancestors[i]->transformation_type == ROTATE)
+		{
+			/* Need atomic operations */
+			float temp_x = x;
+			float temp_y = y;
+			float temp_z = z;
+			temp_x = x * cos(ancestors[i]->x * PI / 180) + z * sin(ancestors[i]->x * PI / 180);
+			temp_z = z * cos(ancestors[i]->x * PI / 180) - x * sin(ancestors[i]->x * PI / 180);	
+			x = temp_x;
+			z = temp_z;
+			temp_y = y * cos(ancestors[i]->y * PI / 180) - z * sin(ancestors[i]->y * PI / 180);
+			temp_z = z * cos(ancestors[i]->y * PI / 180) + y * sin(ancestors[i]->y * PI / 180);	
+			y = temp_y;
+			z = temp_z;	
+			glRotatef(ancestors[i]->x, 0, 1, 0);
+			glRotatef(ancestors[i]->y, 1, 0, 0);
+		}	
+
 	}
-	gluLookAt(x, y, z, 
+	glTranslatef(0,0,-3.f);
+	gluLookAt(0, 0, 3 - 1.0f, 
 			0, 0, -1.0f,
 			0.0, 1.0, 0.0);
+/*	gluLookAt(0, 0, 0, 
+			0, 0, 0,
+			0.0, 1.0, 0.0);*/
+
 }
 
 void process_nodes()
@@ -1015,7 +1071,6 @@ void myReshape(GLsizei width, GLsizei height)
    // Compute aspect ratio of the new window
    if (height == 0) height = 1;                // To prevent divide by 0
    GLfloat aspect = (GLfloat)width / (GLfloat)height;
- 
    // Set the viewport to cover the new window
    glViewport(0, 0, width, height);
  
@@ -1023,46 +1078,11 @@ void myReshape(GLsizei width, GLsizei height)
    
 	glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
     glLoadIdentity();             // Reset
-   // Enable perspective projection with fovy, aspect, zNear and zFar
-
-	if(meshes.size() > 0)
-	{
-		Trimesh* mesh = meshes.back();
-		if(mesh)
-		{
-			vector<float> v = mesh->get_target();
-			float diff = mesh->get_xy_diff();
-			float diam = mesh->get_diam();
-			
-			float left = v[0] - diam; 
-			float right = v[0] + diam;
-			float bottom = v[1] - diam; 
-			float top = v[1] + diam; 
-			//cout << left  << "   " <<right;
-			if ( aspect < 1.0 ) { 
-			// window taller than wide 
-				bottom /= aspect; 
-				top /= aspect; 
-			} else { 
-				left *= aspect; 
-				right *= aspect;
-			}
-					
-			if(perspective_mode_enabled)
-			{
-				//glFrustum(left, right, bottom, top, 0.1f, 0.1f + diam); 
-				gluPerspective(30.f, aspect, 1.0f, 2.0f + diam * 100.0f);
-				//gluPerspective(45, aspect, 2.0f, 2.0f + diam * 2.0f);
-				//cout << 2 * diam;
-			}
-			//else
-			//	glOrtho(left, right, bottom, top, 1.0f, 1.0f + diam); 
-		}
-
-	}
+	gluPerspective(70.0f, aspect, 1.0f, 20.0f);
 	
-   
-		
+
+	
+	
 
 }
 
