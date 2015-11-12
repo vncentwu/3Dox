@@ -46,14 +46,20 @@ GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation
 	*cur_name_text, *cur_type_text, *cur_id_text, *cur_depth_text, *cur_parent_text;
 GLUI_TextBox *tree_display;
 GLUI_List *gui_node_list;
-GLUI_Listbox *type_selector;
+GLUI_Listbox *type_selector, *attribute_list, *transformation_list;
+GLUI_Spinner *x_spinner, *y_spinner, *z_spinner, *rotation_spinner;
+float x_val, y_val, z_val, rotation_val;
+
 vector<Node*> tree_list;
-Node* current_node;
+Node *current_node, *main_camera;
 string cur_name_textx = "";
-string cur_type_textx = "";  
+string cur_type_textx = "ROOT";  
 string cur_parent_textx = "";
 string model_namex = "";
-int cur_id_textx, cur_depth_textx;
+string add_text = "";
+string dummy_text = "";
+int cur_id_textx, cur_depth_textx, curr_trans_index;
+bool update_lock;
 
 
 int   wireframe = 0;
@@ -76,6 +82,7 @@ float view_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 float obj_pos[] = { 0.0, 0.0, 0.0 };
 char *string_list[] = { "Hello World!", "Foo", "Testing...", "Bounding box: on" };
 int   curr_string = 0;
+int   curr_attr = 6;
 int   curr_type_string = 0;
 
 int counter;
@@ -85,6 +92,7 @@ Node* root;
 void* wait_in(void*)
 {
 }
+
 
 void update_tree_list()
 {
@@ -129,16 +137,24 @@ void update_tree_list()
 	}
 }
 
-void control_cb(int control)
-{
-	return;
-}
-
 void dummy_func(int mode)
 {
-
+	cout << "HIIIIIIIIIIIIIIIIIIIII" << endl;
 }
 
+void name_cb(int mode)
+{
+	return;
+	//cout << " HIIIIIIIIIII" << endl;
+	cout << "callback for: " << current_node->n_name << " to " << cur_name_textx.c_str() << endl;
+	if(mode == 0)
+	{
+		string temp = cur_name_textx;
+		current_node->n_name = temp.c_str();
+		cout << "curr name is now: " << current_node->n_name << endl;
+	}
+		
+}
 
 void toggle_transform(int mode)
 {
@@ -174,10 +190,28 @@ void toggle_trinity(int mode)
 void update_current()
 {
 	cur_name_textx = current_node->n_name;
-	cur_type_textx = node_type_string[current_node->type]; 
+	//(current_node->n_depth > 0) ? cur_name_text->enable() : cur_name_text->disable();
+	cur_type_textx = (current_node->n_depth > 0) ? 
+		node_type_string[current_node->type]	 :
+		"ROOT";
+
 	cur_id_textx = current_node->n_id;
 	cur_depth_textx = current_node->n_depth;
+	x_val = current_node->x;
+	y_val = current_node->y;
+	z_val = current_node->z;
+	transformation_list->set_int_val(current_node->transformation_type);
+/*	if(current_node->type == TRANSFORMATION)
+		transform_panel->set_name("Transformations");
+	else
+		transform_panel->set_name("Camera");*/
+	rotation_val = current_node->degree;
 	model_namex = current_node->model_name;
+
+	if(current_node->attr_type)
+	{
+		attribute_list->set_int_val(current_node->attr_type);
+	}
 	if(current_node->parent)
 	{
 		string temp = "";
@@ -188,7 +222,7 @@ void update_current()
 	else
 		cur_parent_textx = "";
 	toggle_trinity(0);
-	if(current_node->type == TRANSFORMATION)
+	if(current_node->type == TRANSFORMATION | current_node->type == LIGHT)
 		toggle_transform(1);
 	else if(current_node->type == ATTRIBUTE)
 		toggle_attributes(1);
@@ -196,8 +230,24 @@ void update_current()
 		toggle_model_text(1);
 }
 
+void control_cb(int control)
+{
+
+	//reset tree
+	if(control == 1)
+	{
+		root->children.clear();
+		current_node = root;
+		update_current();
+		update_tree_list();
+
+	}
+	return;
+}
+
 void add_node(int mode)
 {		
+	cout << "called this " << endl;
 	if(mode != 0 && current_node->n_depth == 0)
 	{
 		cout << "Cannot delete root" << endl;
@@ -227,17 +277,19 @@ void add_node(int mode)
 	else if(mode == 2)
 	{
 		parent->removeChild(current_node);	
-		if(current_node->children.size()>0)
+		if(current_node->children.size() == 1)
 		{
 			current_node = current_node->children[0];
 			parent->addChild(current_node);
 			current_node->decrement_depth_children();
 		}
-		else
+		else if(current_node->children.size() == 0)
 		{
 			no_children = true;
 			current_node = parent;
-		}							
+		}	
+		else
+			cout << "Cannot delete node with more than one child." << endl;						
 	}
 	update_tree_list();
 	gui_node_list->update_and_draw_text();
@@ -265,11 +317,33 @@ void process_transform(int mode)
 
 }
 
+void attribute_cb(int mode)
+{
+	if(mode == 0)
+	{
+		cout << "gave node attr type: " << curr_attr << endl;
+		current_node->attr_type = curr_attr;
+	}
+}
 void textbox_cb(GLUI_Control *control) {
     printf("Got textbox callback\n");
 }
 
+void transform_cb(int mode)
+{
+	if(mode == 3)
+	{
+		current_node->x = x_val;
+		current_node->y = y_val;
+		current_node->z = z_val;
+		current_node->degree = rotation_val;		
+	}
+	else if(mode == 5)
+	{
+		current_node->transformation_type = curr_trans_index;
+	}
 
+}
 
 void select_cb(int control) {
     if(control == 1)
@@ -294,10 +368,29 @@ void initialize_dummy_nodes()
 	node4->addChild(node5);
 }
 
+void initialize_kid_nodes()
+{
+	Node* object = new Node(OBJECT, "Object 1");
+	Node* camera = new Node(CAMERA, "Main camera");
+	Node* light_node = new Node(LIGHT, "Main light");
+	Node* camera_transform = new Node(TRANSFORMATION, "Camera transformer");
+	Node* geom = new Node(GEOMETRY, "Model 1");
+	main_camera = camera;
+
+	root->addChild(object);
+	object->addChild(geom);
+	root->addChild(camera_transform);
+	camera_transform->addChild(camera);
+	root->addChild(light_node);
+
+
+
+}
 
 int main(int argc, char* argv[])
 {
 	root = new Node(OBJECT, "Root");
+	initialize_kid_nodes();
 	current_node = root;
 	lighting_off = false;
 	local_coords = true;
@@ -343,7 +436,7 @@ int main(int argc, char* argv[])
 					    GLUI_SUBWINDOW_RIGHT );
   /* Panel for adding node */
   create_panel = new GLUI_Panel(glui, "Create node");
-	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", "", 0, dummy_func);
+	  edit_node_name = new GLUI_EditText(create_panel, "Name: ", add_text);
 	  /* Dropdown for adding node */
 	  type_selector = new GLUI_Listbox( create_panel, "Type:", &curr_type_string );
 	  for(int j = 0; j<7; j++)
@@ -360,29 +453,34 @@ int main(int argc, char* argv[])
 			geometry_panel->disable();
 			model_name = new GLUI_EditText(geometry_panel, "Path: ", model_namex);
 		transform_panel = new GLUI_Panel(edit_panel, "Transformations");
-			x_text = new GLUI_EditText(transform_panel, "X: ", "", 0, process_transform);
-			y_text = new GLUI_EditText(transform_panel, "Y: ", "", 0, process_transform);
-			z_text = new GLUI_EditText(transform_panel, "Z: ", "", 0, process_transform);
-			rotation_text = new GLUI_EditText(transform_panel, "Degree: ", "", 0, process_transform);								
-			x_text->disable();
-			y_text->disable();
-			z_text->disable();
-			rotation_text->disable();
+			transform_panel->disable();
+			x_spinner = new GLUI_Spinner(transform_panel, "X:", &x_val, 3, transform_cb);
+			y_spinner = new GLUI_Spinner(transform_panel, "Y:", &y_val, 3, transform_cb);
+			z_spinner = new GLUI_Spinner(transform_panel, "Z:", &z_val, 3, transform_cb);
+			//rotation_spinner = new GLUI_Spinner(transform_panel, "Degree:", &rotation_val, 3, transform_cb);
+			transformation_list = new GLUI_Listbox( transform_panel, "      Type:", &curr_trans_index, 5, transform_cb );
+			  for(int j = 0; j<4; j++)
+			  {
+				transformation_list->add_item(j, transformation_type_string[j]);
+			  }  
 		attribute_panel = new GLUI_Panel(edit_panel, "Attributes");
 			attribute_panel->disable();
-			GLUI_Listbox *attribute_list = new GLUI_Listbox( attribute_panel, "Mode:", &curr_string );
-			for(int k = 0; k<6; k++)
+			attribute_list = new GLUI_Listbox( attribute_panel, "Mode:", &curr_attr, 0, attribute_cb );
+			for(int k = 0; k<7; k++)
 			{
 				attribute_list->add_item(k, attributes[k]);
 			} 
+			attribute_list->set_int_val(6);
 		detail_panel = new GLUI_Panel(edit_panel, "Node details");
-			cur_name_text = new GLUI_EditText(detail_panel, "Name: ", cur_name_textx);
+			cur_name_text = new GLUI_EditText(detail_panel, "Name: ", cur_name_textx, 0, name_cb);
 			cur_type_text = new GLUI_EditText(detail_panel, "Type: ", cur_type_textx);
 			cur_id_text = new GLUI_EditText(detail_panel, "ID: ", &cur_id_textx);
 			cur_depth_text = new GLUI_EditText(detail_panel, "Depth: ", &cur_depth_textx);
 			cur_parent_text = new GLUI_EditText(detail_panel, "Parent: ", cur_parent_textx);
 			detail_panel->disable();
+		new GLUI_Separator(edit_panel);
 		new GLUI_Button( edit_panel, "Delete node", 2, add_node); 
+		new GLUI_Button( edit_panel, "Reset", 1, control_cb); 
 
 	/* Node selection Panel */
   	obj_panel = new GLUI_Panel(glui, "Node selection");
@@ -412,6 +510,7 @@ int main(int argc, char* argv[])
 	{
 		cout << "tree: " << tree_list[n]->n_name << endl;
 	}
+	update_tree_list();
 	pthread_t t1;
 	pthread_create(&t1, NULL, wait_in, NULL);
 	glutMainLoop();	
@@ -419,7 +518,7 @@ int main(int argc, char* argv[])
 }
 
 /* Draws a single model */
-void draw_model(Trimesh* mesh)
+void draw_model(Trimesh* mesh, int attr)
 {
 
 	//glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
@@ -435,7 +534,7 @@ void draw_model(Trimesh* mesh)
 	if(mesh != NULL)
 	{
 		camera_target = mesh->get_target();
-		mesh->drawFaces(mode);
+		mesh->drawFaces(attr);
 		if(vnormals)
 			mesh->drawVNormals();
 		if(fnormals)
@@ -443,11 +542,57 @@ void draw_model(Trimesh* mesh)
 	}	
 }
 
+void apply_transformation(Node* node)
+{
+	//cout << "transformation applied" << endl;
+	switch(node->transformation_type)
+	{
+		case ROTATE:
+			cout << "rotating by " << node->x <<  endl;
+			glRotatef(node->x, 0, 1, 0);
+			glRotatef(node->y, 0, 0, 1);
+			glRotatef(node->z, 1, 0, 0);
+			break;
+		case TRANSLATE:
+			glTranslatef(node->x, node->y, node->z);
+			break;
+		case SCALE:
+			glScalef(node->x, node->y, node->z);
+			break;
+	}
+}
 
+void draw_axes( float scale )
+{
+  glDisable( GL_LIGHTING );
+
+  glPushMatrix();
+  glScalef( scale, scale, scale );
+
+  glBegin( GL_LINES );
+ 
+  glColor3f( 1.0, 0.0, 0.0 );
+  glVertex3f( .8f, 0.05f, 0.0 );  glVertex3f( 1.0, 0.25f, 0.0 ); /* Letter X*/
+  glVertex3f( 0.8f, .25f, 0.0 );  glVertex3f( 1.0, 0.05f, 0.0 );
+  glVertex3f( 0.0, 0.0, 0.0 );  glVertex3f( 1.0, 0.0, 0.0 ); /* X axis */
+
+  glColor3f( 0.0, 1.0, 0.0 );
+  glVertex3f( 0.0, 0.0, 0.0 );  glVertex3f( 0.0, 1.0, 0.0 ); /* Y axis */
+
+  glColor3f( 0.0, 0.0, 1.0 );
+  glVertex3f( 0.0, 0.0, 0.0 );  glVertex3f( 0.0, 0.0, 1.0 ); /* Z axis  */
+  glEnd();
+
+  glPopMatrix();
+
+  glEnable( GL_LIGHTING );
+}
 
 /* Helper function to recursively processes all the nodes */
-void process_nodes(Node* node)
+void process_nodes(Node* node, int attr)
 {
+	int mode = attr;
+	//glPopMatrix();
 	switch(node->type)
 	{
 		case OBJECT:
@@ -456,15 +601,17 @@ void process_nodes(Node* node)
 
 		case GEOMETRY:
 			if(node->model)
-				draw_model(node->model);
+				draw_model(node->model, mode);
 			break;
 
 		case TRANSFORMATION:
+			apply_transformation(node);
+
 
 			break;
 
 		case ATTRIBUTE:
-
+			mode = node->attr_type;
 			break;
 
 		case LIGHT:
@@ -472,6 +619,9 @@ void process_nodes(Node* node)
 			break;
 
 		case CAMERA:
+				
+
+
 
 			break;
 
@@ -484,14 +634,55 @@ void process_nodes(Node* node)
 	}
 	for(int i = 0; i < node->children.size(); i++)
 	{
-		process_nodes(node->children[i]);
+		glPushMatrix();
+		process_nodes(node->children[i], mode);
+		glPopMatrix();
 	}
+}
+
+void preprocess_camera()
+{
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	Node *parent;
+	if(main_camera)
+	 parent = main_camera->parent;
+	vector<Node*> ancestors;
+	while(parent)
+	{
+		if(parent->type == TRANSFORMATION)
+			ancestors.push_back(parent);
+		parent = parent->parent;
+	}
+
+	for(int i = 0; i < ancestors.size(); i++)
+	{
+		if(ancestors[i]->transformation_type == TRANSLATE)
+		{
+			x += ancestors[i]->x;
+			y += ancestors[i]->y;
+			z += ancestors[i]->z;
+		}
+	}
+	gluLookAt(x, y, z, 
+			0, 0, -1.0f,
+			0.0, 1.0, 0.0);
 }
 
 void process_nodes()
 {
-	process_nodes(root);
+	draw_axes(0.1f);
+	preprocess_camera();
+/*	gluLookAt(0.0f, 0, 0.0f, 
+			1.0f, 0.5f, -1.0f,
+			0.0, 1.0, 0.0);*/
+	
+	//glPushMatrix();
+	process_nodes(root, SHADED);
 }
+
+
 
 void myDisplay()
 {
@@ -505,6 +696,7 @@ void myDisplay()
 		glEnable(GL_LIGHT0);
 		glEnable(GL_COLOR_MATERIAL);		
 	}
+	//draw_axes(0.1f);
 	process_nodes();
 	/*float diam = 0;
 	float z_min = 0;
@@ -794,6 +986,7 @@ void idle()
 	ready = true;
 	glui->sync_live();
 	current_node->setAndUpdateModel(model_namex.c_str(), loader);
+	//cout << "wtf" << cur_name_textx << endl;
 }
 
 void printFiles()

@@ -16,6 +16,7 @@
 #include <stdio.h>
 //#include <string.h>
 #include <float.h>
+//#include "node.h"
 
 using namespace std;
 
@@ -265,12 +266,15 @@ class Trimesh
 			{
 				switch(mode)
 				{
-					case FACES:
+					case 3:
 						glBegin(GL_TRIANGLES);
-					case POINTS:
+						break;
+					case 0:
 						glBegin(GL_POINTS);
-					case LINES:
+						break;
+					case 1:
 						glBegin(GL_LINES);
+						break;
 				}
 				glBegin(GL_TRIANGLES);
 					vector<int> face = faces[i];
