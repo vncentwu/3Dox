@@ -52,6 +52,8 @@ GLUI_Listbox *type_selector, *attribute_list, *transformation_list;
 GLUI_Spinner *x_spinner, *y_spinner, *z_spinner, *rotation_spinner;
 float x_val, y_val, z_val, rotation_val;
 
+
+
 vector<Node*> tree_list;
 Node *current_node, *main_camera;
 string cur_name_textx = "";
@@ -86,6 +88,11 @@ char *string_list[] = { "Hello World!", "Foo", "Testing...", "Bounding box: on" 
 int   curr_string = 0;
 int   curr_attr = 6;
 int   curr_type_string = 0;
+
+GLenum lights[] = {GL_LIGHT0, GL_LIGHT1, GL_LIGHT2, GL_LIGHT3, GL_LIGHT4, 
+	GL_LIGHT5, GL_LIGHT6, GL_LIGHT7};
+
+int light_counter = 0;
 
 int counter;
 Node* root;
@@ -147,7 +154,6 @@ void dummy_func(int mode)
 void name_cb(int mode)
 {
 	return;
-	//cout << " HIIIIIIIIIII" << endl;
 	cout << "callback for: " << current_node->n_name << " to " << cur_name_textx.c_str() << endl;
 	if(mode == 0)
 	{
@@ -192,7 +198,6 @@ void toggle_trinity(int mode)
 void update_current()
 {
 	cur_name_textx = current_node->n_name;
-	//(current_node->n_depth > 0) ? cur_name_text->enable() : cur_name_text->disable();
 	cur_type_textx = (current_node->n_depth > 0) ? 
 		node_type_string[current_node->type]	 :
 		"ROOT";
@@ -203,10 +208,6 @@ void update_current()
 	y_val = current_node->y;
 	z_val = current_node->z;
 	transformation_list->set_int_val(current_node->transformation_type);
-/*	if(current_node->type == TRANSFORMATION)
-		transform_panel->set_name("Transformations");
-	else
-		transform_panel->set_name("Camera");*/
 	rotation_val = current_node->degree;
 	model_namex = current_node->model_name;
 
@@ -249,7 +250,6 @@ void control_cb(int control)
 
 void add_node(int mode)
 {		
-	cout << "called this " << endl;
 	if(mode != 0 && current_node->n_depth == 0)
 	{
 		cout << "Cannot delete root" << endl;
@@ -268,7 +268,7 @@ void add_node(int mode)
 	{
 		current_node->addChild(node);
 	}
-	else if(mode == 1)
+	else if(mode == 1) //as parent
 	{
 		parent->addChild(node);
 		parent->removeChild(current_node);
@@ -276,14 +276,20 @@ void add_node(int mode)
 		current_node->increment_depth();
 		current_node = node;
 	}
-	else if(mode == 2)
+	else if(mode == 2) //delete node
 	{
+		if(current_node->type == LIGHT)
+		{
+			glDisable(GL_LIGHT0);
+			cout << "disabling light" << endl;
+		}
+			
 		parent->removeChild(current_node);	
 		if(current_node->children.size() == 1)
 		{
 			current_node = current_node->children[0];
 			parent->addChild(current_node);
-			current_node->decrement_depth_children();
+			//current_node->decrement_depth_children();
 		}
 		else if(current_node->children.size() == 0)
 		{
@@ -291,7 +297,8 @@ void add_node(int mode)
 			current_node = parent;
 		}	
 		else
-			cout << "Cannot delete node with more than one child." << endl;						
+			cout << "Cannot delete node with more than one child." << endl;	
+
 	}
 	update_tree_list();
 	gui_node_list->update_and_draw_text();
@@ -385,7 +392,7 @@ void initialize_kid_nodes()
 	geom_transform->addChild(geom);
 	root->addChild(camera_transform);
 	camera_transform->addChild(camera);
-	root->addChild(light_node);
+	//root->addChild(light_node);
 	geom->setAndUpdateModel("cactus.obj", loader);
 
 
@@ -395,6 +402,10 @@ int main(int argc, char* argv[])
 {
 	root = new Node(OBJECT, "Root");
 	
+	printf("Index of LIGHT0 %d\n", GL_LIGHT0);
+	printf("Index of LIGHT1 %d\n", GL_LIGHT1);
+	printf("Index of LIGHT2 %d\n", GL_LIGHT2);
+
 	current_node = root;
 	lighting_off = false;
 	local_coords = true;
@@ -597,7 +608,7 @@ void preprocess_camera_rotation()
 
 void draw_axes( float scale )
 {
-  glDisable( GL_LIGHTING );
+  //glDisable( GL_LIGHTING );
 
   glPushMatrix();
   
@@ -620,7 +631,7 @@ void draw_axes( float scale )
 
   glPopMatrix();
 
-  glEnable( GL_LIGHTING );
+  //glEnable( GL_LIGHTING );
 }
 
 /* Helper function to recursively processes all the nodes */
@@ -650,7 +661,10 @@ void process_nodes(Node* node, int attr)
 			break;
 
 		case LIGHT:
-		
+			glEnable(GL_LIGHT0);
+			cout << "enabling light " << endl;
+
+			//printf("light ayy lmao");
 			break;
 
 		case CAMERA:
@@ -730,6 +744,9 @@ void preprocess_camera()
 
 void process_nodes()
 {
+	//for(int i = 0; i < 8; i++)
+	//	glDisable(GL_LIGHT0 + i);
+
 	draw_axes(0.1f);
 	preprocess_camera();
 /*	gluLookAt(0.0f, 0, 0.0f, 
@@ -750,109 +767,17 @@ void myDisplay()
 	glLoadIdentity();
 	if(!lighting_off)
 	{
+		float ambient[] = {0.0f, 0.0f, 0.0f, 0.0f};
 		glEnable(GL_LIGHTING);
-		glEnable(GL_LIGHT0);
+		glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient);
+		//glEnable(GL_LIGHT0);
+		//for(int i = 0;)
+		//glDisable(GL_LIGHT0);
 		glEnable(GL_COLOR_MATERIAL);		
 	}
-	//draw_axes(0.1f);
-	process_nodes();
-	/*float diam = 0;
-	float z_min = 0;
-	vector<float> camera_target;
-	Trimesh* mesh = NULL;
-	if(meshes.size() > 0)
-	{
-		mesh = meshes.back();
-		if(mesh)
-		{
-			camera_target = mesh->get_target();
-			diam = mesh->get_diam();
-			z_min = mesh->get_min_z();
-		}
-	}
-
-	float span = 0.f;
-	if(meshes.size() > 0)
-    {
-	    float z = 2.0f + diam * 4.0f + perm_zoom + zoom;
-	    float theta = 45.0f/2.0f;
-	    float tang = tan(theta);
-	    float opposite = tang * z;
-	    span = opposite * 2.0f;    	
-    }
-
-
-	if(camera_target.size() >= 3)
-		gluLookAt(0, 0, 1.0f + diam * 4.0f + (perm_zoom + zoom) * span, camera_target[0], camera_target[1], camera_target[2], 0.0, 1.0, 0.0);
-
-	glPushMatrix();
-
-	float auto_rotate_deg = auto_rotate_enabled ? glutGet(GLUT_ELAPSED_TIME)/100.0f : 0;
-	glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-	if(mesh && !local_coords)
-		mesh->applyTransformations();
-	//handle rotation about a point
-	if(camera_target.size() >= 3)
-	{
-		glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
-		if(mesh && local_coords)
-			mesh->applyTransformations();
-		float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
-		float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
-		glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
-		glRotatef(deg_y, 0, 1, 0);	
-		glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
-	}
-	
-	if(mesh != NULL)
-	{
-		mesh->drawFaces(mode);
-		if(vnormals)
-			mesh->drawVNormals();
-		if(fnormals)
-			mesh->drawFNormals();
-	}*/
-	
-	/*gluLookAt(0, 0, 
-		1.0f + diam * 4.0f + (perm_zoom + zoom) * span, 
-		camera_target[0], 
-		camera_target[1], 
-		camera_target[2], 
-		0.0, 1.0, 0.0);*/
-
-
-
-	/*for(int i = 0; i < meshes.size() - 1; i++)
-	{
-		mesh = meshes[i];
-		if(mesh->draw)
-		{
-			glPopMatrix();
-			glPushMatrix();
-			camera_target = mesh->get_target();
-			glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-			glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
-			if(mesh && local_coords)
-				mesh->applyTransformations();
-			float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
-			float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
-			//glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
-			//glRotatef(deg_y, 0, 1, 0);	
-			glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
-
-			if(mesh != NULL)
-			{
-				mesh->drawFaces(mode);
-				if(vnormals)
-					mesh->drawVNormals();
-				if(fnormals)
-					mesh->drawFNormals();
-			}
-		}
-	}	*/	
-	
-	if(!lighting_off)
-		glDisable(GL_LIGHTING);
+	process_nodes();	
+	//if(!lighting_off)
+		//glDisable(GL_LIGHTING);
 	glutSwapBuffers();
 	glFlush();
 	usleep(30000);
