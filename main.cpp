@@ -43,7 +43,8 @@ bool vnormals;
 GLUI *glui, *glui2;
 GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
-GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, *attribute_panel, *geometry_panel, *detail_panel;
+GLUI_Panel      *obj_panel, *create_panel, *edit_panel, *transform_panel, 
+*attribute_panel, *geometry_panel, *detail_panel, *motion_panel;
 GLUI_EditText	*edit_node_name, *model_name, *x_text, *y_text, *z_text, *rotation_text, 
 	*cur_name_text, *cur_type_text, *cur_id_text, *cur_depth_text, *cur_parent_text;
 GLUI_TextBox *tree_display;
@@ -88,14 +89,15 @@ char *string_list[] = { "Hello World!", "Foo", "Testing...", "Bounding box: on" 
 int   curr_string = 0;
 int   curr_attr = 6;
 int   curr_type_string = 0;
-
-GLenum lights[] = {GL_LIGHT0, GL_LIGHT1, GL_LIGHT2, GL_LIGHT3, GL_LIGHT4, 
-	GL_LIGHT5, GL_LIGHT6, GL_LIGHT7};
-
-int light_counter = 0;
+int motion_type = 0;
 
 int counter;
 Node* root;
+
+vector<GLenum> all_lights {GL_LIGHT7, GL_LIGHT6, GL_LIGHT5, GL_LIGHT4, GL_LIGHT3, 
+	GL_LIGHT2, GL_LIGHT1, GL_LIGHT0};
+vector<GLenum> free_lights {GL_LIGHT7, GL_LIGHT6, GL_LIGHT5, GL_LIGHT4, GL_LIGHT3, 
+	GL_LIGHT2, GL_LIGHT1, GL_LIGHT0};
 
 
 void* wait_in(void*)
@@ -151,6 +153,13 @@ void dummy_func(int mode)
 	cout << "HIIIIIIIIIIIIIIIIIIIII" << endl;
 }
 
+void motion_cb(int mode)
+{
+	current_node->motion_type = motion_type;
+	current_node->tick = 0;
+	cout << "setting motion type to " << motion_type << endl;
+}
+
 void name_cb(int mode)
 {
 	return;
@@ -188,11 +197,20 @@ void toggle_attributes(int mode)
 		attribute_panel->enable();
 }
 
+void toggle_motion(int mode)
+{
+	if(mode == 0)
+		motion_panel->disable();
+	else
+		motion_panel->enable();
+}
+
 void toggle_trinity(int mode)
 {
 	toggle_transform(mode);
 	toggle_attributes(mode);
 	toggle_model_text(mode);
+	toggle_motion(mode);
 }
 
 void update_current()
@@ -225,12 +243,26 @@ void update_current()
 	else
 		cur_parent_textx = "";
 	toggle_trinity(0);
-	if(current_node->type == TRANSFORMATION | current_node->type == LIGHT)
+	if(current_node->type == TRANSFORMATION)
+	{
 		toggle_transform(1);
+		transform_panel->set_name("Transformations");
+	}
+	else if(current_node-> type == CAMERA)
+	{
+		toggle_transform(1);
+		transform_panel->set_name("Projection (square)");
+	}
 	else if(current_node->type == ATTRIBUTE)
 		toggle_attributes(1);
 	else if(current_node->type == GEOMETRY)
 		toggle_model_text(1);
+	if(current_node->type == MOTION)
+	{
+		toggle_motion(1);
+		toggle_transform(1);
+		transform_panel->set_name("Motion parameters");
+	}
 }
 
 void control_cb(int control)
@@ -250,6 +282,7 @@ void control_cb(int control)
 
 void add_node(int mode)
 {		
+	
 	if(mode != 0 && current_node->n_depth == 0)
 	{
 		cout << "Cannot delete root" << endl;
@@ -263,6 +296,12 @@ void add_node(int mode)
 		nam = node_type_string[type];
 	Node *node = new Node(type, nam);
 	bool no_children;
+	if(node->type == LIGHT)
+	{
+		node->light = free_lights.back();
+		free_lights.pop_back();
+	}
+		
 
 	if(mode == 0) //as child
 	{
@@ -280,8 +319,9 @@ void add_node(int mode)
 	{
 		if(current_node->type == LIGHT)
 		{
-			glDisable(GL_LIGHT0);
-			cout << "disabling light" << endl;
+			glDisable(current_node->light);
+			free_lights.push_back(current_node->light);
+			//cout << "disabling light" << endl;
 		}
 			
 		parent->removeChild(current_node);	
@@ -297,7 +337,12 @@ void add_node(int mode)
 			current_node = parent;
 		}	
 		else
+		{
 			cout << "Cannot delete node with more than one child." << endl;	
+			if(current_node->type == LIGHT)
+				free_lights.push_back(node->light);
+		}
+			
 
 	}
 	update_tree_list();
@@ -392,7 +437,7 @@ void initialize_kid_nodes()
 	geom_transform->addChild(geom);
 	root->addChild(camera_transform);
 	camera_transform->addChild(camera);
-	//root->addChild(light_node);
+	root->addChild(light_node);
 	geom->setAndUpdateModel("cactus.obj", loader);
 
 
@@ -402,6 +447,8 @@ int main(int argc, char* argv[])
 {
 	root = new Node(OBJECT, "Root");
 	
+
+
 	printf("Index of LIGHT0 %d\n", GL_LIGHT0);
 	printf("Index of LIGHT1 %d\n", GL_LIGHT1);
 	printf("Index of LIGHT2 %d\n", GL_LIGHT2);
@@ -494,9 +541,16 @@ int main(int argc, char* argv[])
 			cur_depth_text = new GLUI_EditText(detail_panel, "Depth: ", &cur_depth_textx);
 			cur_parent_text = new GLUI_EditText(detail_panel, "Parent: ", cur_parent_textx);
 			detail_panel->disable();
+		motion_panel = new GLUI_Panel(edit_panel, "Motion");
+			radio = new GLUI_RadioGroup(motion_panel, &motion_type, 0, motion_cb);
+			motion_panel->disable();
+		new GLUI_RadioButton(radio, "Rotation");
+		new GLUI_RadioButton(radio, "Translation");
 		new GLUI_Separator(edit_panel);
 		new GLUI_Button( edit_panel, "Delete node", 2, add_node); 
-		new GLUI_Button( edit_panel, "Reset", 1, control_cb); 
+		new GLUI_Separator(edit_panel);
+		new GLUI_Button( edit_panel, "Clear tree", 1, control_cb); 
+
 
 	/* Node selection Panel */
   	obj_panel = new GLUI_Panel(glui, "Node selection");
@@ -551,6 +605,7 @@ void draw_model(Trimesh* mesh, int attr)
 	if(mesh != NULL)
 	{
 		camera_target = mesh->get_target();
+		glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
 		mesh->drawFaces(attr);
 		if(vnormals)
 			mesh->drawVNormals();
@@ -561,22 +616,45 @@ void draw_model(Trimesh* mesh, int attr)
 
 void apply_transformation(Node* node)
 {
+	//vector<float> ctarget = node->model->get_target();
 	//cout << "transformation applied" << endl;
-	switch(node->transformation_type)
+	if(node->type == TRANSFORMATION)
 	{
-		case ROTATE:
-			//cout << "rotating by " << node->x <<  endl;
-			glRotatef(node->x, 0, 1, 0);
-			glRotatef(node->y, 0, 0, 1);
-			glRotatef(node->z, 1, 0, 0);
-			break;
-		case TRANSLATE:
-			glTranslatef(node->x, node->y, node->z);
-			break;
-		case SCALE:
-			glScalef(node->x, node->y, node->z);
-			break;
+		switch(node->transformation_type)
+		{
+			case ROTATE:
+				//cout << "rotating by " << node->x <<  endl;
+				glRotatef(node->x, 0, 1, 0);
+				glRotatef(node->y, 0, 0, 1);
+				glRotatef(node->z, 1, 0, 0);
+				break;
+			case TRANSLATE:
+				glTranslatef(node->x, node->y, node->z);
+				break;
+			case SCALE:
+				glScalef(node->x, node->y, node->z);
+				break;
+		}
 	}
+	else
+	{
+		switch(node->motion_type)
+		{
+			case MOTION_ROTATE:
+				glRotatef(node->x * node->tick, 0, 1, 0);
+				glRotatef(node->y * node->tick, 0, 0, 1);
+				glRotatef(node->z * node->tick, 1, 0, 0);
+			break;
+
+			case MOTION_TRANSLATE:
+				glTranslatef(node->x * node->tick, node->y*node->tick, node->z * node->tick);
+			break;
+
+		}
+
+
+	}
+
 }
 
 void preprocess_camera_rotation()
@@ -638,6 +716,8 @@ void draw_axes( float scale )
 void process_nodes(Node* node, int attr)
 {
 	int mode = attr;
+
+	node->tick++;
 	//glPopMatrix();
 	switch(node->type)
 	{
@@ -661,8 +741,7 @@ void process_nodes(Node* node, int attr)
 			break;
 
 		case LIGHT:
-			glEnable(GL_LIGHT0);
-			cout << "enabling light " << endl;
+			glEnable(node->light);
 
 			//printf("light ayy lmao");
 			break;
@@ -675,6 +754,8 @@ void process_nodes(Node* node, int attr)
 			break;
 
 		case MOTION:
+
+			apply_transformation(node);
 
 			break;
 
@@ -734,7 +815,7 @@ void preprocess_camera()
 	}
 	glTranslatef(0,0,-3.f);
 	gluLookAt(0, 0, 3 - 1.0f, 
-			0, 0, -1.0f,
+			0, 0, -0.0f,
 			0.0, 1.0, 0.0);
 /*	gluLookAt(0, 0, 0, 
 			0, 0, 0,
@@ -773,6 +854,10 @@ void myDisplay()
 		//glEnable(GL_LIGHT0);
 		//for(int i = 0;)
 		//glDisable(GL_LIGHT0);
+		for(int i = 0; i < all_lights.size(); i++)
+		{
+			glDisable(all_lights[i]);
+		}
 		glEnable(GL_COLOR_MATERIAL);		
 	}
 	process_nodes();	
@@ -969,6 +1054,9 @@ void idle()
 	ready = true;
 	glui->sync_live();
 	current_node->setAndUpdateModel(model_namex.c_str(), loader);
+
+
+
 	//cout << "wtf" << cur_name_textx << endl;
 }
 
