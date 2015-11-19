@@ -65,7 +65,7 @@ string add_text = "";
 string dummy_text = "";
 int cur_id_textx, cur_depth_textx, curr_trans_index;
 bool update_lock;
-
+int hide_node;
 
 int   wireframe = 0;
 int   obj_type = 1;
@@ -148,27 +148,32 @@ void update_tree_list()
 	}
 }
 
+void hide_cb(int mode)
+{
+	current_node->hide = hide_node;
+}
+
 void dummy_func(int mode)
 {
-	cout << "HIIIIIIIIIIIIIIIIIIIII" << endl;
+	//cout << "HIIIIIIIIIIIIIIIIIIIII" << endl;
 }
 
 void motion_cb(int mode)
 {
 	current_node->motion_type = motion_type;
 	current_node->tick = 0;
-	cout << "setting motion type to " << motion_type << endl;
+	//cout << "setting motion type to " << motion_type << endl;
 }
 
 void name_cb(int mode)
 {
 	return;
-	cout << "callback for: " << current_node->n_name << " to " << cur_name_textx.c_str() << endl;
+	//cout << "callback for: " << current_node->n_name << " to " << cur_name_textx.c_str() << endl;
 	if(mode == 0)
 	{
 		string temp = cur_name_textx;
 		current_node->n_name = temp.c_str();
-		cout << "curr name is now: " << current_node->n_name << endl;
+		//cout << "curr name is now: " << current_node->n_name << endl;
 	}
 		
 }
@@ -215,6 +220,7 @@ void toggle_trinity(int mode)
 
 void update_current()
 {
+	hide_node = current_node->hide;
 	cur_name_textx = current_node->n_name;
 	cur_type_textx = (current_node->n_depth > 0) ? 
 		node_type_string[current_node->type]	 :
@@ -248,6 +254,13 @@ void update_current()
 		toggle_transform(1);
 		transform_panel->set_name("Transformations");
 	}
+	else if(current_node->type == OBJECT)
+	{
+		toggle_transform(1);
+		transformation_list->disable();
+		current_node->transformation_type = TRANSLATE;
+		transform_panel->set_name("Coordinate space");
+	}
 	else if(current_node-> type == CAMERA)
 	{
 		toggle_transform(1);
@@ -257,7 +270,7 @@ void update_current()
 		toggle_attributes(1);
 	else if(current_node->type == GEOMETRY)
 		toggle_model_text(1);
-	if(current_node->type == MOTION)
+	else if(current_node->type == MOTION)
 	{
 		toggle_motion(1);
 		toggle_transform(1);
@@ -282,7 +295,7 @@ void control_cb(int control)
 
 void add_node(int mode)
 {		
-	
+
 	if(mode != 0 && current_node->n_depth == 0)
 	{
 		cout << "Cannot delete root" << endl;
@@ -298,8 +311,11 @@ void add_node(int mode)
 	bool no_children;
 	if(node->type == LIGHT)
 	{
+
 		node->light = free_lights.back();
 		free_lights.pop_back();
+		//cout << "GIVING LIGHT: " << node->light << endl;
+
 	}
 		
 
@@ -348,20 +364,21 @@ void add_node(int mode)
 	update_tree_list();
 	gui_node_list->update_and_draw_text();
 	if(mode == 0)
-		gui_node_list->curr_line = line + current_node->num_descendants();
+		gui_node_list->curr_line = line + 1;
 	else if(no_children)
-		gui_node_list->curr_line = line - current_node->num_descendants() - 1;
+		gui_node_list->curr_line = line;
 	else if(mode == 1 | mode == 2)
 		gui_node_list->curr_line = line;
 	if(mode != 2)
 		current_node = node;
-	cout << gui_node_list->curr_line << endl;
+	//cout << gui_node_list->curr_line << endl;
 	update_current();
+	add_text = "";
 }
 
 void load_model(int mode)
 {
-	cout << "this?" << endl;
+	//cout << "this?" << endl;
 }
 
 
@@ -375,12 +392,12 @@ void attribute_cb(int mode)
 {
 	if(mode == 0)
 	{
-		cout << "gave node attr type: " << curr_attr << endl;
+		//cout << "gave node attr type: " << curr_attr << endl;
 		current_node->attr_type = curr_attr;
 	}
 }
 void textbox_cb(GLUI_Control *control) {
-    printf("Got textbox callback\n");
+    //printf("Got textbox callback\n");
 }
 
 void transform_cb(int mode)
@@ -427,6 +444,8 @@ void initialize_kid_nodes()
 	Node* object = new Node(OBJECT, "Object 1");
 	Node* camera = new Node(CAMERA, "Main camera");
 	Node* light_node = new Node(LIGHT, "Main light");
+	light_node->light = free_lights.back();
+	free_lights.pop_back();
 	Node* camera_transform = new Node(TRANSFORMATION, "Camera transformer");
 	Node* geom_transform = new Node(TRANSFORMATION, "Model transformer");
 	Node* geom = new Node(GEOMETRY, "Model 1");
@@ -438,20 +457,16 @@ void initialize_kid_nodes()
 	root->addChild(camera_transform);
 	camera_transform->addChild(camera);
 	root->addChild(light_node);
-	geom->setAndUpdateModel("cactus.obj", loader);
+	//geom->setAndUpdateModel("cactus.obj", loader);
 
 
 }
 
 int main(int argc, char* argv[])
 {
+	cout << "Please refer to the README for any clarifications. Thanks!" << endl;
+
 	root = new Node(OBJECT, "Root");
-	
-
-
-	printf("Index of LIGHT0 %d\n", GL_LIGHT0);
-	printf("Index of LIGHT1 %d\n", GL_LIGHT1);
-	printf("Index of LIGHT2 %d\n", GL_LIGHT2);
 
 	current_node = root;
 	lighting_off = false;
@@ -476,10 +491,10 @@ int main(int argc, char* argv[])
 	}
 
 	glutInit(&argc, argv); //init glut library
-	glutInitWindowSize(1000.f, 1000.f);
+	glutInitWindowSize(1200.f, 1000.f);
 	glutInitWindowPosition(0,0);
 
-	main_window = glutCreateWindow("Scarlox scene loader (v2.3)");
+	main_window = glutCreateWindow("Scarlox scene loader");
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
 	glutDisplayFunc(myDisplay);
 	GLUI_Master.set_glutReshapeFunc(myReshape);
@@ -492,7 +507,7 @@ int main(int argc, char* argv[])
   /****************************************/
   /*         Here's the GLUI code         */
   /****************************************/
-	printf( "GLUI version: %3.2f\n", GLUI_Master.get_version() );
+	//printf( "GLUI version: %3.2f\n", GLUI_Master.get_version() );
 
   /*** Create the side subwindow ***/
   glui = GLUI_Master.create_glui_subwindow( main_window, 
@@ -546,10 +561,13 @@ int main(int argc, char* argv[])
 			motion_panel->disable();
 		new GLUI_RadioButton(radio, "Rotation");
 		new GLUI_RadioButton(radio, "Translation");
-		new GLUI_Separator(edit_panel);
-		new GLUI_Button( edit_panel, "Delete node", 2, add_node); 
-		new GLUI_Separator(edit_panel);
-		new GLUI_Button( edit_panel, "Clear tree", 1, control_cb); 
+		//new GLUI_Separator(edit_panel);
+		GLUI_Panel *tree_panel =  new GLUI_Panel(edit_panel, "Tree management");
+		new GLUI_Checkbox( tree_panel, "Hide node: ", &hide_node, 0, hide_cb);
+		//new GLUI_Separator(tree_panel);
+		new GLUI_Button( tree_panel, "Delete node", 2, add_node); 
+		//new GLUI_Separator(tree_panel);
+		new GLUI_Button( tree_panel, "Clear tree", 1, control_cb); 
 
 
 	/* Node selection Panel */
@@ -575,10 +593,10 @@ int main(int argc, char* argv[])
 		gui_node_list->add_item(i, temp.c_str());
 		pd = elem->n_depth;
 	}
-	cout << "tree: " << tree_list.size() << endl;
+	//cout << "tree: " << tree_list.size() << endl;
 	for(int n = 0; n < tree_list.size(); n++)
 	{
-		cout << "tree: " << tree_list[n]->n_name << endl;
+		//cout << "tree: " << tree_list[n]->n_name << endl;
 	}
 	update_tree_list();
 
@@ -592,25 +610,19 @@ int main(int argc, char* argv[])
 void draw_model(Trimesh* mesh, int attr)
 {
 
-	//glTranslatef((x_translate+ perm_x_translate) * span /200.0f, -(y_translate+perm_y_translate) * span /200.0f, 0.f);
-	//glTranslatef(camera_target[0], camera_target[1], camera_target[2]);
-	//if(mesh && local_coords)
-	//	mesh->applyTransformations();
-	//float deg_x = Perm_x_rotate + x_rotate + auto_rotate_deg * auto_rotate_speed;
-	//float deg_y = Perm_y_rotate + y_rotate + auto_rotate_deg * auto_rotate_speed;
-	//glRotatef(-deg_x, 1, 0, 0); //rotating object, camera static'
-	//glRotatef(deg_y, 0, 1, 0);	
-	//glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
-
+	if(attr == SOLID)
+		glDisable(GL_LIGHTING);
 	if(mesh != NULL)
 	{
 		camera_target = mesh->get_target();
 		glTranslatef(-camera_target[0], -camera_target[1], -camera_target[2]);
 		mesh->drawFaces(attr);
-		if(vnormals)
+		if(attr == 5)
 			mesh->drawVNormals();
-		if(fnormals)
+		if(attr == 4)
 			mesh->drawFNormals();
+
+
 	}	
 }
 
@@ -618,7 +630,7 @@ void apply_transformation(Node* node)
 {
 	//vector<float> ctarget = node->model->get_target();
 	//cout << "transformation applied" << endl;
-	if(node->type == TRANSFORMATION)
+	if(node->type == TRANSFORMATION || node->type == OBJECT)
 	{
 		switch(node->transformation_type)
 		{
@@ -691,7 +703,7 @@ void draw_axes( float scale )
   glPushMatrix();
   
   glScalef( scale, scale, scale );
-  glTranslatef(4.0f, -9.0f, 0);
+  glTranslatef(0, 0, 0);
   preprocess_camera_rotation();
   glBegin( GL_LINES );
   
@@ -716,52 +728,50 @@ void draw_axes( float scale )
 void process_nodes(Node* node, int attr)
 {
 	int mode = attr;
-
-	node->tick++;
-	//glPopMatrix();
-	switch(node->type)
+	if(!node->hide)
 	{
-		case OBJECT:
+		switch(node->type)
+		{
+			case OBJECT:
 
-			break;
+				apply_transformation(node);
+				break;
 
-		case GEOMETRY:
-			if(node->model)
-				draw_model(node->model, mode);
-			break;
+			case GEOMETRY:
+				if(node->model)
+					draw_model(node->model, mode);
+				break;
 
-		case TRANSFORMATION:
-			apply_transformation(node);
-
-
-			break;
-
-		case ATTRIBUTE:
-			mode = node->attr_type;
-			break;
-
-		case LIGHT:
-			glEnable(node->light);
-
-			//printf("light ayy lmao");
-			break;
-
-		case CAMERA:
-				
+			case TRANSFORMATION:
+				apply_transformation(node);
 
 
+				break;
 
-			break;
+			case ATTRIBUTE:
+				mode = node->attr_type;
+				break;
 
-		case MOTION:
+			case LIGHT:
+				glEnable(node->light);
+				//cout << "light" << node->light << endl;
+				break;
 
-			apply_transformation(node);
+			case CAMERA:
+					
+				break;
 
-			break;
+			case MOTION:
 
-		default:
-			cout << "Incorrect node type" << endl;
+				apply_transformation(node);
+
+				break;
+
+			default:
+				cout << "Incorrect node type" << endl;
+		}		
 	}
+	node->tick++;
 	for(int i = 0; i < node->children.size(); i++)
 	{
 		glPushMatrix();
@@ -828,6 +838,8 @@ void process_nodes()
 	//for(int i = 0; i < 8; i++)
 	//	glDisable(GL_LIGHT0 + i);
 
+	glDisable(GL_LIGHTING);
+
 	draw_axes(0.1f);
 	preprocess_camera();
 /*	gluLookAt(0.0f, 0, 0.0f, 
@@ -835,6 +847,7 @@ void process_nodes()
 			0.0, 1.0, 0.0);*/
 	
 	//glPushMatrix();
+	glEnable(GL_LIGHTING);		
 	process_nodes(root, SHADED);
 }
 
@@ -846,6 +859,16 @@ void myDisplay()
 	myReshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	if(main_camera->x != 0 | main_camera->y != 0 | main_camera->z != 0 )
+	{
+		//cout << "TF" << endl;
+		glFrustum(main_camera->x, 
+			main_camera->x + main_camera->degree,
+			main_camera->y,
+			main_camera->y + main_camera->degree,
+			main_camera->z,
+			main_camera->z+ main_camera->degree);
+	}
 	if(!lighting_off)
 	{
 		float ambient[] = {0.0f, 0.0f, 0.0f, 0.0f};
